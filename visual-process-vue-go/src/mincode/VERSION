@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "source": "MinCode plugin UI",
+  "files": {
+    "element-plus-styles.js": "828858a8c057513f64c85887ebea978d447223719cf003c0f0b3382a45ce2edd",
+    "form-payload.mjs": "67b01ca5fd8fd88af4203544cebb05b9fc042d3524ef2b58bf4d51a00596fe32",
+    "foundation.css": "19c3d855f79d5b2888a0240f7f9517d440613b3f59edb19e677f16f4514d6486",
+    "messages.mjs": "af44d4cfc5ded77e98f115d3816afc9ddca8bd635bb8989de7fff7b27581339b",
+    "mount.d.ts": "d59afe94c81255dede7cdce64533c2854f7d0c75ee09508083e72b2c306c69fd",
+    "mount.js": "799402699c6b1fdda083db5422f23406b311b2e3c8946382a9a7b977bfb1bebf",
+    "OfficialPluginPage.vue": "deba65c01bddb43261db95b0b40830e2c9a6d7c79fa2e160f3f9a713be0c8f3c",
+    "page.css": "7ca1556f368ac00ce429481b91413c3d444dad734b32ae3da83c721d13b5c5e7",
+    "path-fields.mjs": "4fab186078d8947a10bc644726248e7d15f76e0cdd614bfd3ecda1b5046d880b",
+    "PluginConnectionBar.vue": "47fb54888340cfd9938878a576fa2873d3e83a317bda0f6e5f51e178d9e9fb25",
+    "PluginResults.vue": "ed596ef260f4b193f76e4a1e203837063a721e6bdb941aa764f7cc643e8cda66",
+    "PluginStatusArea.vue": "9cf261bbcbdd277029c6b4767ad3490d6c3968db4953e4221f514bc44a1bbe5a",
+    "PluginTaskPanel.vue": "0edd14a12e04db9dd2627c00a2780c4f55390c8fb1644678ff5c56e89a56327e",
+    "result-model.mjs": "81198a4d5ee6981b99678f7c8bb258de8b965f13f9e5066dd1da494d53f9c5dc",
+    "scrollbar.css": "6b6b90a6c61b69a4073129d57d6f929575e0dde9d89a3ec6acb994ba9d4d971d",
+    "status-messages.ts": "a71599da7274082a9b606d9123df9627f333fbb9cf1f8e332a11d15a9531f710",
+    "task-messages.ts": "423b4d944c6413dd398af0f6c08804bc7c76e0882008efe1be80d8bedde186e5",
+    "tasks.d.mts": "f0c8bf030f5bf5d1bb82af1a11aabbcbc0257b33f1d91a80518f5819694e08db",
+    "tasks.mjs": "6d0187312caf4edcecc97e3b55cd37d9375bf7a12c34d8921cf495d7af53037a",
+    "theme-tokens.js": "f729d69bfadf72d95f84960e2d6e71b52bfc0dbed126ff4bdcf295e0fdbbb18c",
+    "transport.d.ts": "eb398bc3996902f55bdd7b7823869d7e39a73d9bd697e71f2964406cfd5a22b6",
+    "transport.js": "a473197853b19efd17190411d485efc93aa64b1476d3359c19b9d71cb859a638"
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "apiVersion": 2,
+  "id": "host-api-showcase",
+  "name": "Host API Showcase / 宿主接口实测",
+  "version": "0.1.0",
+  "description": "Manual test plugin for the generic host UI requests, plugin calls, host events and schedules (docs/verification/contribution-points.md §8). Not for release.",
+  "category": "development",
+  "author": "MinCode",
+  "platforms": [
+    "darwin",
+    "linux",
+    "windows"
+  ],
+  "capabilities": [
+    "commands",
+    "ui",
+    "workspace.read",
+    "shell",
+    "plugins",
+    "notifications"
+  ],
+  "runtime": {
+    "type": "process",
+    "entry": "bin/plugin.mjs",
+    "args": []
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "host-api-showcase.editor",
+        "title": "Host API Showcase: Open a workspace file at a line",
+        "titleLocalized": {
+          "zh": "宿主接口实测：打开工作区文件并定位",
+          "en": "Host API Showcase: Open a workspace file at a line"
+        },
+        "action": "editor",
+        "payload": "",
+        "risk": "read"
+      },
+      {
+        "id": "host-api-showcase.diff",
+        "title": "Host API Showcase: Open a read-only diff",
+        "titleLocalized": {
+          "zh": "宿主接口实测：打开只读对比",
+          "en": "Host API Showcase: Open a read-only diff"
+        },
+        "action": "diff",
+        "payload": "",
+        "risk": "read"
+      },
+      {
+        "id": "host-api-showcase.pick",
+        "title": "Host API Showcase: Quick pick (single)",
+        "titleLocalized": {
+          "zh": "宿主接口实测：单选",
+          "en": "Host API Showcase: Quick pick (single)"
+        },
+        "action": "pick",
+        "payload": "",
+        "risk": "read"
+      },
+      {
+        "id": "host-api-showcase.pickMany",
+        "title": "Host API Showcase: Quick pick (multiple)",
+        "titleLocalized": {
+          "zh": "宿主接口实测：多选",
+          "en": "Host API Showcase: Quick pick (multiple)"
+        },
+        "action": "pickMany",
+        "payload": "",
+        "risk": "read"
+      },
+      {
+        "id": "host-api-showcase.input",
+        "title": "Host API Showcase: Input box",
+        "titleLocalized": {
+          "zh": "宿主接口实测：输入文本",
+          "en": "Host API Showcase: Input box"
+        },
+        "action": "input",
+        "payload": "",
+        "risk": "read"
+      },
+      {
+        "id": "host-api-showcase.password",
+        "title": "Host API Showcase: Input box (password)",
+        "titleLocalized": {
+          "zh": "宿主接口实测：输入密码",
+          "en": "Host API Showcase: Input box (password)"
+        },
+        "action": "password",
+        "payload": "",
+        "risk": "read"
+      },
+      {
+        "id": "host-api-showcase.terminal",
+        "title": "Host API Showcase: Open a terminal and run a command",
+        "titleLocalized": {
+          "zh": "宿主接口实测：打开终端并运行命令",
+          "en": "Host API Showcase: Open a terminal and run a command"
+        },
+        "action": "terminal",
+        "payload": "",
+        "risk": "write"
+      },
+      {
+        "id": "host-api-showcase.view",
+        "title": "Host API Showcase: Open another plugin's view",
+        "titleLocalized": {
+          "zh": "宿主接口实测：打开其他插件的页面",
+          "en": "Host API Showcase: Open another plugin's view"
+        },
+        "action": "view",
+        "payload": "",
+        "risk": "read"
+      },
+      {
+        "id": "host-api-showcase.invoke",
+        "title": "Host API Showcase: Call another plugin's action",
+        "titleLocalized": {
+          "zh": "宿主接口实测：调用其他插件的动作",
+          "en": "Host API Showcase: Call another plugin's action"
+        },
+        "action": "invoke",
+        "payload": "",
+        "risk": "write"
+      },
+      {
+        "id": "host-api-showcase.events",
+        "title": "Host API Showcase: Show recent host events",
+        "titleLocalized": {
+          "zh": "宿主接口实测：查看最近收到的事件",
+          "en": "Host API Showcase: Show recent host events"
+        },
+        "action": "events",
+        "payload": "",
+        "risk": "read"
+      }
+    ],
+    "actions": [
+      {
+        "id": "tick",
+        "risk": "read",
+        "maxPayloadBytes": 1024,
+        "description": "Scheduled tick: posts a notification."
+      }
+    ],
+    "schedules": [
+      {
+        "id": "tick",
+        "title": "Demo tick",
+        "titleLocalized": {
+          "zh": "实测定时任务"
+        },
+        "action": "tick",
+        "intervalMinutes": 15
+      }
+    ]
+  }
+}

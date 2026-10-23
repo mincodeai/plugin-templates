@@ -1,0 +1,8 @@
+{
+  "name": "example",
+  "parallel": false,
+  "tasks": {
+    "build-ui": { "run": "pnpm build" },
+    "test": { "run": "pnpm test", "dependsOn": ["build-ui"] }
+  }
+}

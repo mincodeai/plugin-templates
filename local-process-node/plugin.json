@@ -1,0 +1,59 @@
+{
+  "category": "development",
+  "tags": [
+    "node",
+    "template"
+  ],
+  "apiVersion": 2,
+  "id": "local-plugin",
+  "name": "Example Local Plugin",
+  "version": "0.1.0",
+  "description": "A dependency-free MinCode local process plugin template.",
+  "author": "Your Name",
+  "platforms": [
+    "darwin",
+    "linux",
+    "windows"
+  ],
+  "capabilities": [
+    "commands",
+    "storage"
+  ],
+  "runtime": {
+    "type": "process",
+    "entry": "bin/plugin.mjs",
+    "args": []
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "local-plugin.hello",
+        "title": "Example Local Plugin: Hello",
+        "titleLocalized": {"zh": "示例本地插件：问候", "en": "Example Local Plugin: Hello"},
+        "description": "Return a structured greeting from the local process plugin.",
+        "keywords": [
+          "example",
+          "plugin",
+          "hello"
+        ],
+        "action": "hello",
+        "payload": "",
+        "risk": "read"
+      },
+      {
+        "id": "local-plugin.counter",
+        "title": "Example Local Plugin: Increment Counter",
+        "titleLocalized": {"zh": "示例本地插件：计数器递增", "en": "Example Local Plugin: Increment Counter"},
+        "description": "Increment the template counter stored through the MinCode host.",
+        "keywords": [
+          "example",
+          "plugin",
+          "counter"
+        ],
+        "action": "counter",
+        "payload": "",
+        "risk": "write"
+      }
+    ]
+  }
+}

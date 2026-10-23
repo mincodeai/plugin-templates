@@ -1,0 +1,8 @@
+/* Native scroll areas inside plugin iframes (not covered by host styles). */
+:root { --plugin-scrollbar-thumb: rgba(120, 130, 145, .45); --plugin-scrollbar-hover: rgba(120, 130, 145, .7); }
+* { scrollbar-width: thin; scrollbar-color: var(--plugin-scrollbar-thumb) transparent; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--plugin-scrollbar-thumb); border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--plugin-scrollbar-hover); }
+*::-webkit-scrollbar-corner { background: transparent; }

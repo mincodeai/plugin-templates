@@ -1,0 +1,16 @@
+{
+  "Task": {
+    "prefix": ["task", "tsk"],
+    "body": ["task ${1:name}", "\trun \"${2:command}\"", "end", "$0"],
+    "description": "Declare a task that runs one command"
+  },
+  "Conditional": {
+    "prefix": "when",
+    "body": ["when ${1:condition}", "\t$0", "else", "\t", "end"],
+    "description": "Branch on a condition"
+  },
+  "Setting": {
+    "prefix": "set",
+    "body": "${1:key} = ${2|true,false|}"
+  }
+}

@@ -1,0 +1,310 @@
+{
+  "category": "development",
+  "tags": ["template", "node", "formatter", "dashboard", "walkthrough", "linter", "lsp", "testing"],
+  "apiVersion": 2,
+  "id": "contributions-process-showcase",
+  "name": "Process Contributions Showcase",
+  "version": "0.1.0",
+  "description": "A dependency-free Node process plugin template showing a formatter, a linter, a language server, hover and completion, a sidebar tree view, a test provider, tasks, command-palette search, an AI context provider, AI catalogs, a deep link, a dashboard data widget and a walkthrough step that runs a command.",
+  "author": "Your Name",
+  "platforms": ["darwin", "linux", "windows"],
+  "capabilities": ["commands", "ui", "storage", "shell", "workspace.read"],
+  "runtime": {
+    "type": "process",
+    "entry": "bin/plugin.mjs",
+    "args": []
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "contributions-process-showcase.bump",
+        "title": "Process Showcase: Increment Counter",
+        "titleLocalized": { "zh": "进程示例：计数器加一", "en": "Process Showcase: Increment Counter" },
+        "description": "Increment the counter shown on the dashboard widget.",
+        "keywords": ["example", "counter"],
+        "action": "bump",
+        "payload": "",
+        "risk": "write"
+      },
+      {
+        "id": "contributions-process-showcase.show",
+        "title": "Process Showcase: Show Counter",
+        "titleLocalized": { "zh": "进程示例：查看计数器", "en": "Process Showcase: Show Counter" },
+        "description": "Show the counter value. Also reached from demo: search and the mincode://contributions-process-showcase/counter/show link.",
+        "keywords": ["example", "counter"],
+        "action": "show",
+        "payload": "",
+        "risk": "read"
+      }
+    ],
+    "actions": [
+      {
+        "id": "format",
+        "risk": "read",
+        "maxPayloadBytes": 262144,
+        "description": "Formatter for the mcdemo language: trims trailing whitespace and re-indents task/when/else/end blocks; supports ranges."
+      },
+      {
+        "id": "dashboard.summary",
+        "risk": "read",
+        "maxPayloadBytes": 1024,
+        "description": "Data for the counter dashboard widget: {widget} => {items, updatedAt}."
+      },
+      {
+        "id": "show",
+        "risk": "read",
+        "maxPayloadBytes": 1024,
+        "description": "Read the counter: {} => {count, message}. Backs the Show Counter command, demo: search and the /counter/show deep link."
+      },
+      {
+        "id": "lint",
+        "risk": "read",
+        "maxPayloadBytes": 262144,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "Linter for the mcdemo language: {linter, languageId, fileName, relativePath?, text, trigger} => {diagnostics}; flags TODO, trailing whitespace and lines over 120 characters."
+      },
+      {
+        "id": "palette.search",
+        "risk": "read",
+        "maxPayloadBytes": 2048,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "demo: command-palette search: {provider, query, locale} => {items}; static items for the Show Counter command and an example.com URL."
+      },
+      {
+        "id": "ai.context",
+        "risk": "read",
+        "maxPayloadBytes": 2048,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "@demo AI context: {provider, argument?, locale} => {text, title}; a short description of the mcdemo language and its lint rules."
+      },
+      {
+        "id": "catalog.search",
+        "risk": "read",
+        "maxPayloadBytes": 2048,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "Search demo AI catalogs: {catalog, kind, query, locale} => {items}."
+      },
+      {
+        "id": "catalog.install",
+        "risk": "read",
+        "maxPayloadBytes": 2048,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "Return demo MCP config or SKILL.md: {catalog, kind, id, locale} => {content}."
+      },
+      {
+        "id": "tasks.detect",
+        "risk": "read",
+        "maxPayloadBytes": 4096,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "npm task detection: {provider, project: {name, root?}, platform} => {tasks}; reads package.json scripts under project.root and offers npm run <script>."
+      },
+      {
+        "id": "tree.mcdemo",
+        "risk": "read",
+        "maxPayloadBytes": 4096,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "mcdemo tree view: {view, parent, locale, project?} => {items}; lists .mcdemo files, their tasks and two example links."
+      },
+      {
+        "id": "language.mcdemo",
+        "risk": "read",
+        "maxPayloadBytes": 81920,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "mcdemo hover and completion: {provider, feature, text, startLine, position, locale, ...} => {contents} or {items}."
+      },
+      {
+        "id": "tests.discover",
+        "risk": "read",
+        "maxPayloadBytes": 65536,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "mcdemo test discovery: {provider, locale, project} => {tests}; one node per .mcdemo file, one child per task."
+      },
+      {
+        "id": "tests.run",
+        "risk": "write",
+        "maxPayloadBytes": 65536,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "Simulated mcdemo test run: {provider, locale, project, tests} => {results, output}. Only reads files, but declared write like a real test runner so the host asks for confirmation."
+      }
+    ],
+    "formatters": [
+      {
+        "id": "mcdemo",
+        "title": "MinCode Demo formatter",
+        "titleLocalized": { "zh": "MinCode Demo 格式化" },
+        "languages": ["mcdemo"],
+        "action": "format",
+        "range": true
+      }
+    ],
+    "linters": [
+      {
+        "id": "mcdemo",
+        "title": "MinCode Demo lint",
+        "titleLocalized": { "zh": "MinCode Demo 代码检查" },
+        "languages": ["mcdemo"],
+        "action": "lint",
+        "triggers": ["open", "save", "type"],
+        "debounceMs": 750
+      }
+    ],
+    "searchProviders": [
+      {
+        "id": "demo",
+        "prefix": "demo",
+        "title": "Process showcase",
+        "titleLocalized": { "zh": "进程示例" },
+        "placeholder": "Counter or docs",
+        "placeholderLocalized": { "zh": "计数器或文档" },
+        "action": "palette.search",
+        "minQueryLength": 0
+      }
+    ],
+    "aiContextProviders": [
+      {
+        "id": "demo",
+        "mention": "demo",
+        "title": "MinCode Demo language",
+        "titleLocalized": { "zh": "MinCode Demo 语言" },
+        "description": "Attach a short description of the mcdemo language and its lint rules.",
+        "descriptionLocalized": { "zh": "附加 mcdemo 语言及其检查规则的简要说明。" },
+        "action": "ai.context",
+        "argument": {
+          "required": false,
+          "placeholder": "Optional topic, e.g. when blocks",
+          "placeholderLocalized": { "zh": "可选主题，例如 when 块" }
+        }
+      }
+    ],
+    "aiCatalogs": [
+      {
+        "id": "demo-connectors", "kind": "mcp", "title": "Showcase connectors",
+        "titleLocalized": { "zh": "示例连接器" },
+        "searchAction": "catalog.search", "installAction": "catalog.install"
+      },
+      {
+        "id": "demo-skills", "kind": "skill", "title": "Showcase skills",
+        "titleLocalized": { "zh": "示例技能" },
+        "searchAction": "catalog.search", "installAction": "catalog.install"
+      }
+    ],
+    "uriHandlers": [
+      {
+        "id": "show-counter",
+        "path": "/counter/show",
+        "title": "Show the showcase counter",
+        "titleLocalized": { "zh": "查看示例计数器" },
+        "target": { "type": "command", "command": "contributions-process-showcase.show" }
+      }
+    ],
+    "tasks": [
+      {
+        "id": "node-version",
+        "kind": "static",
+        "title": "Node.js version",
+        "titleLocalized": { "zh": "Node.js 版本" },
+        "detail": "node --version",
+        "group": "other",
+        "command": "node",
+        "args": ["--version"],
+        "cwd": "${projectRoot}",
+        "when": { "files": ["package.json"] }
+      },
+      {
+        "id": "npm",
+        "kind": "provider",
+        "title": "npm scripts",
+        "titleLocalized": { "zh": "npm 脚本" },
+        "action": "tasks.detect"
+      }
+    ],
+    "languageServers": [
+      {
+        "id": "mcdemo",
+        "title": "MinCode Demo language server",
+        "titleLocalized": { "zh": "MinCode Demo 语言服务器" },
+        "languages": ["mcdemo"],
+        "command": "node",
+        "args": ["${pluginRoot}/lib/mcdemo-lsp.mjs", "--stdio"]
+      }
+    ],
+    "treeViews": [
+      {
+        "id": "mcdemo",
+        "title": "mcdemo files",
+        "titleLocalized": { "zh": "mcdemo 文件" },
+        "action": "tree.mcdemo"
+      }
+    ],
+    "languageFeatures": [
+      {
+        "id": "mcdemo",
+        "title": "MinCode Demo hover and completion",
+        "titleLocalized": { "zh": "MinCode Demo 悬停与补全" },
+        "languages": ["mcdemo"],
+        "features": ["hover", "completion"],
+        "action": "language.mcdemo"
+      }
+    ],
+    "testProviders": [
+      {
+        "id": "mcdemo",
+        "title": "mcdemo tasks",
+        "titleLocalized": { "zh": "mcdemo 任务" },
+        "discoverAction": "tests.discover",
+        "runAction": "tests.run"
+      }
+    ],
+    "dashboardWidgets": [
+      {
+        "id": "counter",
+        "kind": "data",
+        "title": "Showcase counter",
+        "titleLocalized": { "zh": "示例计数器" },
+        "action": "dashboard.summary",
+        "refreshSeconds": 60
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "process-showcase",
+        "title": "Process contributions",
+        "titleLocalized": { "zh": "进程插件贡献点" },
+        "description": "A formatter, a dashboard widget and a step that runs a command.",
+        "descriptionLocalized": { "zh": "格式化程序、仪表盘小组件和一个运行命令的步骤。" },
+        "featured": true,
+        "steps": [
+          {
+            "id": "format",
+            "title": "Format a .mcdemo file",
+            "titleLocalized": { "zh": "格式化 .mcdemo 文件" },
+            "text": "Install the contributions-showcase template too, so the mcdemo language exists. Open a .mcdemo file, choose Format Document With… from the editor context menu and pick MinCode Demo formatter."
+          },
+          {
+            "id": "bump",
+            "title": "Run a command",
+            "titleLocalized": { "zh": "运行命令" },
+            "text": "This step runs the plugin's Increment Counter command. It has write risk, so MinCode asks you to confirm first.",
+            "command": "contributions-process-showcase.bump"
+          },
+          {
+            "id": "widget",
+            "title": "Check the dashboard",
+            "titleLocalized": { "zh": "查看仪表盘" },
+            "text": "The Showcase counter card on the dashboard shows the new value. It refreshes every minute while visible, or when you refresh it."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "packageRoot": "dist-plugin",
+  "uiDevServer": false,
+  "build": {"name": "rust-build", "command": "cargo", "args": ["xtask", "build"]},
+  "test": {"name": "rust-test", "command": "cargo", "args": ["test", "--workspace", "--locked"]}
+}

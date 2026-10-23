@@ -1,0 +1,34 @@
+{{! Python requests. escape: json, so every bare variable is a double-quoted JSON string, which is also a valid Python string literal. }}
+import requests
+
+url = {{urlBase}}
+{{#hasQuery}}
+params = [
+{{#query}}
+    ({{name}}, {{value}}),
+{{/query}}
+]
+{{/hasQuery}}
+headers = {
+{{#headers}}
+    {{name}}: {{value}},
+{{/headers}}
+}
+{{#hasBody}}
+body = {{body}}
+{{/hasBody}}
+
+response = requests.request(
+    {{method}},
+    url,
+{{#hasQuery}}
+    params=params,
+{{/hasQuery}}
+    headers=headers,
+{{#hasBody}}
+    data=body.encode("utf-8"),
+{{/hasBody}}
+    timeout=30,
+)
+print(response.status_code)
+print(response.text)

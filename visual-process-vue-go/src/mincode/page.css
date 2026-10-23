@@ -1,0 +1,148 @@
+/* The iframe shares foundation tokens, not the desktop shell sizing/scroll lock. */
+html, body, #app { margin: 0; min-width: 0; height: 100%; min-height: 0; }
+html, body { overflow: hidden; }
+#app { overflow: hidden; }
+.plugin-page-scrollbar { height: 100%; }
+.plugin-panel-scrollbar { min-width: 0; min-height: 0; }
+* { box-sizing: border-box; }
+body { background: var(--app-surface); font-size: var(--app-ui-font-size); line-height: 1.5; }
+.official-plugin-page { width: 100%; padding: 16px; color: var(--app-text); }
+.plugin-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+
+/* Unified plugin toolbar. The host tab already names the plugin, so the bar stays one compact
+   row: title and a single-line description on the left, status and actions on the right.
+   The legacy letter logo slot is hidden; plugin icons live in the host tab and menu. */
+.plugin-page-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; min-height: 44px; padding: 6px 16px; background: var(--app-surface); border-bottom: 1px solid var(--app-border); }
+.plugin-page-header__brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 1 1 240px; }
+.plugin-page-header__logo { display: none !important; }
+.plugin-page-header__text { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.plugin-page-header__title { flex: none; margin: 0; font-size: 14px; line-height: 1.4; font-weight: 600; white-space: nowrap; }
+.plugin-page-header__desc { min-width: 0; margin: 0; overflow: hidden; color: var(--app-text-muted); font-size: 12px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.plugin-page-header__aside { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.plugin-page-header__aside .el-button + .el-button { margin-left: 0; }
+/* Plugins zero `.el-button + .el-button` margins for their gap-based toolbars. Dialog/drawer footers, message boxes
+   and table cells are not gap containers, so buttons placed directly in them get their spacing back here. */
+:is(.el-dialog__footer, .el-drawer__footer, .el-message-box__btns) > .el-button.el-button + .el-button.el-button { margin-left: 12px; }
+.el-table .cell > .el-button.el-button + .el-button.el-button { margin-left: 8px; }
+/* Inside the padded standard page the bar stretches full width like a native toolbar. */
+.official-plugin-page > .plugin-page-header { margin: -16px -16px 16px; padding-right: 16px; padding-left: 16px; }
+.plugin-heading h1 { margin: 0; font-size: 18px; line-height: 1.5; font-weight: 600; letter-spacing: -.3px; }
+.plugin-heading > span:not(.el-tag), .plugin-result-hint, .plugin-section-caption, .plugin-empty-hint { color: var(--app-text-muted); font-size: 12px; line-height: 1.7; }
+.plugin-heading .plugin-result-hint { margin: 4px 0 0; }
+.plugin-section-caption { margin: 4px 0 0; }
+.plugin-notice { --el-collapse-header-height: 36px; border: 1px solid var(--app-border); border-radius: 8px; overflow: hidden; background: var(--app-surface); }
+.plugin-notice .el-collapse-item__header { padding: 0 12px; font-size: 12px; font-weight: 500; border-bottom: 0; }
+.plugin-notice .el-collapse-item__content { padding: 0 12px 12px; }
+.plugin-notice .el-collapse-item__wrap { border-bottom: 0; }
+.plugin-workbench { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+.plugin-parameters, .plugin-result { min-width: 0; padding: 20px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-surface); }
+.plugin-parameters h2, .plugin-result h2 { font-size: 14px; font-weight: 600; margin: 0; }
+.plugin-form { margin-top: 20px; }
+.plugin-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
+.plugin-field-grid .el-form-item { min-width: 0; margin-bottom: 18px; }
+.plugin-field-wide { grid-column: 1 / -1; }
+.plugin-form .el-form-item__label { font-size: 12px; line-height: 20px; margin-bottom: 6px; color: var(--app-text-regular, var(--app-text)); }
+.plugin-form .el-input, .plugin-form .el-textarea { width: 100%; }
+.plugin-form .el-input__wrapper { min-height: 28px; border-radius: 6px; }
+.plugin-form .el-textarea__inner { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.7; padding: 10px; border-radius: 6px; }
+.plugin-form .el-checkbox { height: auto; min-height: 24px; white-space: normal; }
+.plugin-form .el-checkbox__label { font-size: 12px; white-space: normal; line-height: 1.5; }
+.plugin-actions { display: grid; gap: 8px; border-top: 1px solid var(--app-border); padding-top: 16px; }
+.plugin-actions .el-button { margin: 0; width: 100%; min-height: 30px; height: auto; padding: 5px 12px; border-radius: 6px; white-space: normal; line-height: 1.5; }
+.plugin-actions .el-button + .el-button { margin-left: 0; }
+.plugin-parameters > .plugin-result-hint { margin: 16px 0 0; font-size: 11px; }
+.plugin-result { min-height: 480px; }
+.plugin-result > .plugin-heading { border-bottom: 1px solid var(--app-border); padding-bottom: 14px; }
+.plugin-result > .el-empty { min-height: 350px; padding: 40px 12px; }
+.plugin-empty-hint { max-width: 320px; margin: 0; text-align: center; }
+.plugin-result pre { padding: 14px; background: var(--app-muted); border: 1px solid var(--app-border); border-radius: 6px; overflow: auto; max-height: 60vh; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.result-toolbar, .result-stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.result-toolbar .el-button + .el-button { margin-left: 0; }
+.result-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, .8fr); gap: 16px; }
+.result-split > * { min-width: 0; }
+.result-split .el-tree { overflow: auto; max-height: 480px; }
+.result-detail, .limitations-list { font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.result-detail { padding: 14px; background: var(--app-muted); border: 1px solid var(--app-border); border-radius: 6px; }
+.result-detail h3 { margin-top: 0; }
+.plugin-result h3 { font-size: 13px; }
+.result-detail li { margin-bottom: 8px; }
+.plugin-result .el-table { font-size: 12px; }
+.plugin-result .el-tabs__item { font-size: 12px; }
+@media (max-width: 1000px) { .plugin-workbench { grid-template-columns: 280px minmax(0, 1fr); } .result-split { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) { .official-plugin-page { padding: 12px; } .plugin-workbench { grid-template-columns: minmax(0, 1fr); gap: 12px; } .plugin-parameters, .plugin-result { padding: 16px; } .plugin-result { min-height: 320px; } .plugin-result > .el-empty { min-height: 230px; } }
+@media (max-width: 360px) { .plugin-field-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Shared controls, including select overlays teleported to the iframe body. */
+/* Same compact control scale as the desktop workbench (compact-density.css: 28px). */
+.official-plugin-page { --el-component-size: 28px; --el-border-radius-base: 6px; }
+.official-plugin-page .el-form-item { margin-bottom: 16px; }
+.official-plugin-page .el-form-item__label { line-height: 20px; margin-bottom: 4px; font-size: 12px; }
+.official-plugin-page .el-input, .official-plugin-page .el-select { width: 100%; min-width: 0; }
+.official-plugin-page .el-input__wrapper, .official-plugin-page .el-select__wrapper { min-height: 28px; border-radius: 6px; font-size: 13px; }
+.official-plugin-page .el-textarea__inner { border-radius: 6px; line-height: 1.7; }
+.official-plugin-page .el-button { min-height: 28px; border-radius: 6px; font-size: 13px; }
+.official-plugin-page .el-button > span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.official-plugin-page .el-checkbox { min-height: 28px; height: auto; white-space: normal; }
+.official-plugin-page .el-checkbox__label { font-size: 13px; white-space: normal; }
+.official-plugin-page .el-alert { border-radius: 8px; align-items: flex-start; }
+.official-plugin-page .el-alert__content { min-width: 0; overflow-wrap: anywhere; }
+/* Status banners stay one compact line so several of them do not push the content down. */
+.el-alert { padding: 6px 12px; }
+.el-alert .el-alert__title { font-size: 12px; line-height: 20px; }
+.el-alert .el-alert__description { margin-top: 2px; font-size: 12px; line-height: 18px; }
+.el-alert .el-alert__icon { font-size: 14px; width: 14px; }
+.el-alert .el-alert__icon.is-big { font-size: 20px; width: 20px; }
+.official-plugin-page .el-tag { max-width: 100%; height: auto; min-height: 24px; white-space: normal; }
+.official-plugin-page .el-tag__content { overflow-wrap: anywhere; }
+/* A default tag in a toolbar row takes the height of the default buttons beside it (Element's
+   large tag size). Two rules so engines without :has() still apply the first. */
+.el-button:not(.el-button--small, .el-button--large, .is-link) ~ .el-tag:not(.el-tag--small, .el-tag--large) { height: var(--el-component-size, 28px); padding: 0 10px; }
+.el-tag:not(.el-tag--small, .el-tag--large):has(~ .el-button:not(.el-button--small, .el-button--large, .is-link)) { height: var(--el-component-size, 28px); padding: 0 10px; }
+.official-plugin-page .el-table th.el-table__cell { background: var(--app-muted); }
+.official-plugin-page .el-table .cell { line-height: 1.6; }
+.official-plugin-page .el-button:focus-visible, .official-plugin-page .el-checkbox:has(:focus-visible) { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+.plugin-select-popper { max-width: calc(100vw - 24px); border-radius: 8px; }
+.plugin-select-popper .el-select-dropdown__item { height: auto; min-height: 30px; padding: 5px 24px 5px 12px; line-height: 20px; white-space: normal; overflow-wrap: anywhere; font-size: 13px; }
+.plugin-select-popper .el-select-dropdown__item.is-selected { background: var(--app-accent-soft); }
+
+/* Bound every official workbench to the iframe; each column scrolls independently. */
+@media (min-width: 721px) {
+  .plugin-page-scrollbar > .el-scrollbar__wrap > .el-scrollbar__view { height: 100%; }
+  .official-plugin-page:not(.developer-workbench) { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .official-plugin-page > .plugin-heading, .official-plugin-page > .plugin-page-header, .official-plugin-page > .el-alert { flex-shrink: 0; }
+  .plugin-notice { flex-shrink: 0; max-height: 30%; overflow: auto; }
+  .plugin-workbench { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .plugin-panel-scrollbar { height: 100%; }
+  .plugin-panel-scrollbar > .el-scrollbar__wrap > .el-scrollbar__view { min-height: 100%; }
+  .plugin-parameters, .plugin-result { min-height: 100%; }
+}
+@media (max-width: 720px) {
+  .plugin-panel-scrollbar { height: auto; }
+  .official-plugin-page > .plugin-page-header { margin: -12px -12px 12px; padding-right: 12px; padding-left: 12px; }
+}
+@media (max-width: 480px) {
+  .plugin-page-header__desc { display: none; }
+}
+
+/* Shared connection toolbar (PluginConnectionBar.vue) for profile-based connection plugins. */
+.plugin-connection-bar { flex: 0 1 auto; min-width: 0; justify-content: flex-end; margin-left: auto; }
+/* The title/description shrink (and truncate) before the connection controls do. */
+.plugin-page-header:has(> .plugin-connection-bar) > .plugin-page-header__brand { flex: 1 1 0; min-width: 160px; }
+.plugin-connection-bar .plugin-connection-bar__select { width: 220px; }
+/* Header controls follow the 28px desktop scale whatever root class the plugin page uses. */
+.plugin-page-header__aside { --el-component-size: 28px; }
+.plugin-page-header__aside > .el-button:not(.el-button--small, .el-button--large, .is-text, .is-link) { height: 28px; padding: 0 10px; }
+.plugin-page-header__aside .el-select__wrapper { min-height: 28px; }
+.plugin-connection-bar__manage.el-button { width: 100%; justify-content: flex-start; }
+.plugin-connection-bar__option { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.plugin-connection-bar__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plugin-connection-bar__detail { flex: 1; min-width: 0; margin-left: auto; overflow: hidden; color: var(--app-text-muted); font-family: var(--app-font-mono, monospace); font-size: 12px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.plugin-connection-bar__dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--app-border-strong); }
+.plugin-connection-bar__dot.is-live { background: var(--el-color-success); }
+.plugin-connection-bar__popper .el-select-dropdown__item { max-width: min(560px, 92vw); }
+@media (max-width: 720px) {
+  .plugin-connection-bar { flex: 1 1 100%; justify-content: flex-start; margin-left: 0; }
+  .plugin-connection-bar .plugin-connection-bar__select { flex: 1 1 160px; width: auto; }
+}
+
+.plugin-page-header:has(> .plugin-connection-bar) { flex-wrap: wrap; }

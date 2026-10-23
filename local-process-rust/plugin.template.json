@@ -1,0 +1,15 @@
+{
+  "id": "rust-plugin",
+  "name": "Rust Process Plugin",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "category": "development",
+  "tags": ["rust", "template"],
+  "description": "A language-neutral JSON-RPC process plugin written in Rust. No MinCode SDK required.",
+  "platforms": ["__PLATFORM__"],
+  "capabilities": ["commands"],
+  "runtime": {"type": "process", "entry": "bin/__BINARY__"},
+  "contributes": {
+    "commands": [{"id": "rust-plugin.hello", "title": "Rust: Hello", "titleLocalized": {"zh": "Rust：问候", "en": "Rust: Hello"}, "action": "hello", "risk": "read"}]
+  }
+}

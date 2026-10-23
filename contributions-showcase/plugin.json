@@ -1,0 +1,275 @@
+{
+  "category": "development",
+  "tags": ["template", "declarative", "languages", "snippets", "ai", "localization", "icons", "terminal"],
+  "apiVersion": 2,
+  "id": "contributions-showcase",
+  "name": "Contributions Showcase",
+  "version": "0.1.0",
+  "description": "A declarative MinCode plugin template showing languages, snippets, AI prompts, a language pack, file icons, JSON schemas, terminal commands and links, HTTP collections and code generators, terminal color schemes, file templates and a walkthrough.",
+  "author": "Your Name",
+  "runtime": {
+    "type": "declarative"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "mcdemo",
+        "aliases": ["MinCode Demo", "mcdemo"],
+        "extensions": [".mcdemo"],
+        "grammar": "languages/mcdemo.monarch.json",
+        "configuration": "languages/mcdemo.language-configuration.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "mcdemo",
+        "path": "snippets/mcdemo.json"
+      }
+    ],
+    "aiPrompts": [
+      {
+        "id": "explain-mcdemo",
+        "kind": "prompt",
+        "title": "Explain MinCode Demo code",
+        "titleLocalized": {
+          "zh": "解释 MinCode Demo 代码"
+        },
+        "description": "Explain the selected .mcdemo block step by step.",
+        "descriptionLocalized": {
+          "zh": "逐步解释选中的 .mcdemo 代码块。"
+        },
+        "template": "Explain what the following {{language}} code from {{file}} does, step by step:\n\n{{selection}}"
+      },
+      {
+        "id": "mcdemo-style",
+        "kind": "skill",
+        "title": "MinCode Demo style guide",
+        "titleLocalized": {
+          "zh": "MinCode Demo 风格指南"
+        },
+        "description": "Conventions to follow when writing or reviewing .mcdemo files.",
+        "descriptionLocalized": {
+          "zh": "编写或审查 .mcdemo 文件时遵循的约定。"
+        },
+        "path": "skills/mcdemo-style.md"
+      }
+    ],
+    "localizations": [
+      {
+        "locale": "ja",
+        "languageName": "Japanese",
+        "localizedLanguageName": "日本語",
+        "messages": "l10n/messages.ja.json"
+      }
+    ],
+    "fileIcons": [
+      {
+        "id": "contributions-showcase.demo",
+        "title": "MinCode Demo Icons",
+        "titleLocalized": {
+          "zh": "MinCode Demo 图标"
+        },
+        "iconDefinitions": {
+          "file": {
+            "path": "fileicons/file.svg"
+          },
+          "folder": {
+            "path": "fileicons/folder.svg"
+          },
+          "folder-open": {
+            "path": "fileicons/folder-open.svg"
+          },
+          "mcdemo": {
+            "path": "fileicons/mcdemo.svg"
+          },
+          "mcdemo-light": {
+            "path": "fileicons/mcdemo-light.svg"
+          }
+        },
+        "file": "file",
+        "folder": "folder",
+        "folderExpanded": "folder-open",
+        "fileExtensions": {
+          "mcdemo": "mcdemo"
+        },
+        "light": {
+          "fileExtensions": {
+            "mcdemo": "mcdemo-light"
+          }
+        }
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": ["mcdemo.config.json"],
+        "schema": "schemas/mcdemo-config.schema.json",
+        "title": "MinCode Demo configuration",
+        "titleLocalized": {
+          "zh": "MinCode Demo 配置"
+        }
+      }
+    ],
+    "commandSnippets": [
+      {
+        "path": "commands/mcdemo.json"
+      }
+    ],
+    "httpCollections": [
+      {
+        "id": "mcdemo-api",
+        "title": "MinCode Demo API",
+        "titleLocalized": {
+          "zh": "MinCode Demo 接口"
+        },
+        "description": "A {{baseUrl}} collection with a Local environment.",
+        "descriptionLocalized": {
+          "zh": "使用 {{baseUrl}} 变量和 Local 环境的请求集合。"
+        },
+        "path": "http/mcdemo-api.json"
+      }
+    ],
+    "fileTemplates": [
+      {
+        "id": "mcdemo-file",
+        "kind": "file",
+        "title": "MinCode Demo file",
+        "titleLocalized": {
+          "zh": "MinCode Demo 文件"
+        },
+        "category": "MinCode Demo",
+        "defaultName": "tasks",
+        "description": "A .mcdemo file with one task.",
+        "descriptionLocalized": {
+          "zh": "包含一个任务的 .mcdemo 文件。"
+        },
+        "files": [
+          {
+            "path": "{{mincode.name}}.mcdemo",
+            "source": "templates/file.mcdemo.tmpl"
+          }
+        ]
+      },
+      {
+        "id": "mcdemo-project",
+        "kind": "project",
+        "title": "MinCode Demo project",
+        "titleLocalized": {
+          "zh": "MinCode Demo 项目"
+        },
+        "category": "MinCode Demo",
+        "defaultName": "mcdemo-project",
+        "description": "README, src/main.mcdemo and a schema-validated mcdemo.config.json.",
+        "descriptionLocalized": {
+          "zh": "包含 README、src/main.mcdemo 和受 JSON 结构校验的 mcdemo.config.json。"
+        },
+        "files": [
+          {
+            "path": "README.md",
+            "source": "templates/project/README.md.tmpl"
+          },
+          {
+            "path": "src/main.mcdemo",
+            "source": "templates/project/src/main.mcdemo.tmpl"
+          },
+          {
+            "path": "mcdemo.config.json",
+            "source": "templates/project/mcdemo.config.json.tmpl"
+          }
+        ]
+      }
+    ],
+    "terminalLinks": [
+      {
+        "id": "mcdemo-issue",
+        "pattern": "\\bMCDEMO-(\\d{1,6})\\b",
+        "target": {
+          "type": "url",
+          "url": "https://example.com/issues/{1}"
+        }
+      },
+      {
+        "id": "mcdemo-file",
+        "pattern": "([\\w./-]{1,200}\\.mcdemo):(\\d{1,7})",
+        "target": {
+          "type": "file",
+          "path": "{1}",
+          "line": "{2}"
+        },
+        "terminals": ["local"]
+      }
+    ],
+    "terminalColorSchemes": [
+      {
+        "path": "terminal-schemes/mcdemo-dark.json"
+      },
+      {
+        "path": "terminal-schemes/mcdemo-light.json"
+      }
+    ],
+    "httpCodeGenerators": [
+      {
+        "id": "httpie",
+        "title": "HTTPie",
+        "escape": "shell",
+        "template": "assets/codegen/httpie.tmpl"
+      },
+      {
+        "id": "python-requests",
+        "title": "Python (requests)",
+        "titleLocalized": {
+          "zh": "Python（requests）"
+        },
+        "escape": "json",
+        "template": "assets/codegen/python-requests.tmpl"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "getting-started",
+        "title": "Get started with MinCode Demo",
+        "titleLocalized": {
+          "zh": "MinCode Demo 入门"
+        },
+        "description": "Try each contribution of this template in a few steps.",
+        "descriptionLocalized": {
+          "zh": "用几个步骤体验本模板的各个贡献点。"
+        },
+        "featured": true,
+        "steps": [
+          {
+            "id": "open-example",
+            "title": "Open the example file",
+            "titleLocalized": {
+              "zh": "打开示例文件"
+            },
+            "text": "Open example.mcdemo from this template in the editor to see highlighting, then type task to trigger a snippet. Open mcdemo.config.json to see schema completion and validation."
+          },
+          {
+            "id": "new-file",
+            "title": "Create from a template",
+            "titleLocalized": {
+              "zh": "从模板新建"
+            },
+            "text": "Use New File or New Project and pick the MinCode Demo category. File names and contents are filled in from the name you enter."
+          },
+          {
+            "id": "terminal",
+            "title": "Use the terminal",
+            "titleLocalized": {
+              "zh": "使用终端"
+            },
+            "text": "Open a terminal and insert a command from the MinCode Demo snippet library; nothing runs until you press Enter. Output such as MCDEMO-42 or example.mcdemo:3 becomes a clickable link."
+          },
+          {
+            "id": "http",
+            "title": "Import the HTTP collection",
+            "titleLocalized": {
+              "zh": "导入 HTTP 集合"
+            },
+            "text": "In the HTTP workspace, import the MinCode Demo API collection and pick the Local environment. Requests are sent only when you send them."
+          }
+        ]
+      }
+    ]
+  }
+}

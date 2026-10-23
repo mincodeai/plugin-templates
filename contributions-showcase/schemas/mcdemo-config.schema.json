@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MinCode Demo project configuration",
+  "description": "Configuration for a MinCode Demo project (mcdemo.config.json).",
+  "type": "object",
+  "required": ["name", "tasks"],
+  "properties": {
+    "name": {
+      "description": "Project name.",
+      "type": "string",
+      "minLength": 1
+    },
+    "parallel": {
+      "description": "Run independent tasks in parallel.",
+      "type": "boolean",
+      "default": false
+    },
+    "tasks": {
+      "description": "Tasks by name.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/task" }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "task": {
+      "type": "object",
+      "required": ["run"],
+      "properties": {
+        "run": {
+          "description": "Shell command the task runs.",
+          "type": "string",
+          "minLength": 1
+        },
+        "dependsOn": {
+          "description": "Tasks that must finish first.",
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

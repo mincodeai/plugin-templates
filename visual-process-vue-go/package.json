@@ -1,0 +1,33 @@
+{
+  "name": "@example/mincode-visual-vue-go-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.16.0",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:mincode": "mincode plugin dev .",
+    "typecheck": "vue-tsc --noEmit",
+    "build:ui": "vite build",
+    "build:ui:watch": "vite build --watch",
+    "build:backend": "node scripts/build-backend.mjs",
+    "build:backend:watch": "node scripts/watch-backend.mjs",
+    "build": "node scripts/clean.mjs && pnpm run typecheck && pnpm run build:ui && pnpm run build:backend",
+    "test:backend": "cd backend && go test ./...",
+    "test:protocol": "node --test scripts/protocol.test.mjs",
+    "test": "pnpm run test:backend && pnpm run test:protocol",
+    "verify": "pnpm run test && pnpm run build && node scripts/verify-dist.mjs"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "element-plus": "^2.14.3",
+    "vue": "^3.5.40"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.5",
+    "vue-tsc": "^3.3.8",
+    "@types/node": "^22.0.0"
+  }
+}

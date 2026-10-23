@@ -1,0 +1,15 @@
+{
+  "uiDevServer": true,
+  "commands": [
+    {
+      "name": "ui",
+      "command": "pnpm",
+      "args": ["run", "dev"]
+    },
+    {
+      "name": "runtime",
+      "command": "pnpm",
+      "args": ["run", "build:backend:watch"]
+    }
+  ]
+}

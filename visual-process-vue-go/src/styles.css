@@ -1,0 +1,5 @@
+/* Shared foundation, controls and scrollbar styles are loaded by mountPlugin.
+   Keep plugin-specific layout here; use --app-* / --el-* semantic tokens. */
+body {
+  background: var(--app-surface);
+}

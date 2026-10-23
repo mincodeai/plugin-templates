@@ -1,0 +1,31 @@
+{
+  "id": "contributions-showcase.mcdemo-light",
+  "title": "MinCode Demo Light",
+  "titleLocalized": {
+    "zh": "MinCode Demo 浅色"
+  },
+  "kind": "light",
+  "colors": {
+    "foreground": "#383a42",
+    "background": "#fafafa",
+    "cursor": "#526eff",
+    "cursorAccent": "#fafafa",
+    "selectionBackground": "#bfd4ff99",
+    "black": "#383a42",
+    "red": "#c8323a",
+    "green": "#3f8a2e",
+    "yellow": "#946300",
+    "blue": "#2f63d8",
+    "magenta": "#a226a4",
+    "cyan": "#0e7c86",
+    "white": "#a0a1a7",
+    "brightBlack": "#6a6c74",
+    "brightRed": "#e0454d",
+    "brightGreen": "#4a9c38",
+    "brightYellow": "#a87400",
+    "brightBlue": "#4078f2",
+    "brightMagenta": "#b53bb8",
+    "brightCyan": "#138f9a",
+    "brightWhite": "#ffffff"
+  }
+}

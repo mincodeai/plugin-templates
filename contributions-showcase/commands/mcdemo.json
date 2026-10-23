@@ -1,0 +1,31 @@
+{
+  "id": "mcdemo",
+  "title": "MinCode Demo",
+  "titleLocalized": { "zh": "MinCode Demo 示例" },
+  "targets": ["local", "ssh"],
+  "commands": [
+    {
+      "id": "find-files",
+      "title": "Find .mcdemo files",
+      "titleLocalized": { "zh": "查找 .mcdemo 文件" },
+      "description": "Lists .mcdemo files under a directory.",
+      "descriptionLocalized": { "zh": "列出目录下的 .mcdemo 文件。" },
+      "command": "find {{dir}} -name '*.mcdemo' -type f",
+      "variables": [{ "name": "dir", "title": "Directory", "default": ".", "quote": "posix" }],
+      "tags": ["files"]
+    },
+    {
+      "id": "count-tasks",
+      "title": "Count tasks per file",
+      "titleLocalized": { "zh": "统计每个文件的任务数" },
+      "description": "A multi-line snippet: inserted with bracketed paste after the paste confirmation, never run automatically.",
+      "descriptionLocalized": { "zh": "多行片段：经粘贴确认后以括号粘贴方式插入，不会自动执行。" },
+      "command": [
+        "for f in $(find . -name '*.mcdemo' -type f); do",
+        "  printf '%s\\t%s\\n' \"$(grep -c '^task ' \"$f\")\" \"$f\"",
+        "done"
+      ],
+      "tags": ["files"]
+    }
+  ]
+}

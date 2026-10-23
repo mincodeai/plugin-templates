@@ -1,0 +1,37 @@
+{
+  "format": "mincode.http-collection",
+  "version": 1,
+  "name": "MinCode Demo API",
+  "requests": [
+    {
+      "name": "List tasks",
+      "method": "GET",
+      "url": "{{baseUrl}}/tasks",
+      "params": [{ "key": "limit", "value": "20" }],
+      "headers": [{ "key": "Accept", "value": "application/json" }],
+      "documentation": "A GET request that uses the {{baseUrl}} environment variable."
+    },
+    {
+      "name": "Create task",
+      "method": "POST",
+      "url": "{{baseUrl}}/tasks",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Authorization", "value": "{{token}}" }
+      ],
+      "bodyType": "json",
+      "body": "{\n  \"name\": \"build\",\n  \"run\": \"pnpm build\"\n}",
+      "documentation": "Sensitive headers may only be empty or a single {{variable}}; the user fills in the token."
+    }
+  ],
+  "children": [],
+  "environments": [
+    {
+      "name": "Local",
+      "vars": [
+        { "key": "baseUrl", "value": "http://localhost:3000", "description": "Demo service root" },
+        { "key": "token", "value": "", "description": "Fill in your own token" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "source": "MinCode plugin UI core",
+  "files": {
+    "tasks.d.mts": "f0c8bf030f5bf5d1bb82af1a11aabbcbc0257b33f1d91a80518f5819694e08db",
+    "tasks.mjs": "6d0187312caf4edcecc97e3b55cd37d9375bf7a12c34d8921cf495d7af53037a",
+    "theme-tokens.js": "f729d69bfadf72d95f84960e2d6e71b52bfc0dbed126ff4bdcf295e0fdbbb18c",
+    "theme.css": "1909a09b195418d111219de44929d677b4fd5d3fc29484a9b7614ad9a8090873",
+    "transport.d.ts": "2252f96b60e9cd1e9355b7cb57c97726d9736b38112c8cf7df403eec623f1e0b",
+    "transport.js": "8dedfc37c90a8bf2282bb031e3e9deda26f08fddd03b1e3902af3a4f37cebc08"
+  }
+}

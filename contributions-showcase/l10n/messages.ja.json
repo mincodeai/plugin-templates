@@ -1,0 +1,13 @@
+{
+  "nav.dashboard": "ダッシュボード",
+  "nav.terminal": "ターミナル",
+  "nav.projects": "ローカルプロジェクト",
+  "nav.sourceControl": "ソース管理",
+  "nav.database": "データベース",
+  "nav.settings": "設定",
+  "nav.settingsUpdate": "設定（バージョン {version} が利用可能）",
+  "nav.plugins": "プラグイン管理",
+  "commandPalette.keybindingLabel": "ショートカット {key}",
+  "commandPalette.projectScope": "プロジェクト: {project}",
+  "commandPalette.placeholder.files": "{project} 内のファイルを検索"
+}

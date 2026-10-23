@@ -1,0 +1,752 @@
+:root {
+  color-scheme: light;
+  --app-ui-font-size: 13px;
+  --app-ui-font-size-small: calc(var(--app-ui-font-size) - 1px);
+  --app-ui-font-size-extra-small: calc(var(--app-ui-font-size) - 2px);
+  --app-ui-font-size-large: calc(var(--app-ui-font-size) + 1px);
+  --app-ui-viewport-width: 100vw;
+  --app-ui-viewport-height: 100vh;
+  --app-ui-overlay-scale: 1;
+  --app-font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+  font-family: var(--app-font-sans);
+  font-synthesis: none;
+  background: var(--app-canvas);
+  color: var(--app-text);
+
+  --app-canvas: #ffffff;
+  --app-surface: #ffffff;
+  --app-sidebar: #ffffff;
+  --app-border: #f0f0f0;
+  --app-border-strong: #d9d9d9;
+  --app-muted: #ffffff;
+  --app-hover: #f5f5f5;
+  --app-accent: #5d87ff;
+  --app-accent-rgb: 93, 135, 255;
+  --app-accent-hover: #7c9eff;
+  --app-accent-soft: #eef2ff;
+  --app-text: #1f1f1f;
+  --app-text-muted: #737373;
+  --app-text-disabled: #bfbfbf;
+  --app-text-on-accent: #ffffff;
+  --app-top-tabs-height: 40px;
+  --app-activity-rail-width: 56px;
+  --app-activity-rail-labels-width: 72px;
+
+  --el-color-primary: #5d87ff;
+  --el-color-primary-light-3: #7c9eff;
+  --el-color-primary-light-5: #9db6ff;
+  --el-color-primary-light-7: #c9d7ff;
+  --el-color-primary-light-8: #e0e8ff;
+  --el-color-primary-light-9: #eef2ff;
+  --el-color-primary-dark-2: #4a6fd8;
+  --el-color-success: #00b42a;
+  --el-color-warning: #ff7d00;
+  --el-color-danger: #f53f3f;
+  --el-color-info: #86909c;
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #f2f3f5;
+  --el-bg-color-overlay: #ffffff;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f7f8fa;
+  --el-fill-color-lighter: #fbfcfd;
+  --el-fill-color-dark: #f2f3f5;
+  --el-border-color: #c9cdd4;
+  --el-border-color-light: #f0f0f0;
+  --el-border-color-lighter: #f2f3f5;
+  --el-text-color-primary: #1d2129;
+  --el-text-color-regular: #4e5969;
+  --el-text-color-secondary: #86909c;
+  --el-text-color-placeholder: #c9cdd4;
+  --el-border-radius-base: var(--app-radius-sm);
+  --el-border-radius-small: 2px;
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: #f5f7ff;
+  --el-menu-active-color: #5d87ff;
+  /* 加载蒙层用表面色半透，不用深色遮罩；深色遮罩仅保留给模态对话框/抽屉。 */
+  --el-mask-color: color-mix(in srgb, var(--app-surface) 70%, transparent);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-canvas: #17191f;
+  --app-surface: #20232b;
+  --app-sidebar: #1b1e25;
+  --app-border: #363b46;
+  --app-border-strong: #4b5260;
+  --app-muted: #292d36;
+  --app-hover: #303540;
+  --app-accent: #7c9eff;
+  --app-accent-rgb: 124, 158, 255;
+  --app-accent-hover: #9db6ff;
+  --app-accent-soft: #2a3554;
+  --app-text: #edf0f7;
+  --app-text-regular: #c5cad5;
+  --app-text-muted: #98a1b3;
+  --app-text-disabled: #6f7889;
+  --app-text-on-accent: #111827;
+}
+
+:root[data-theme="graphite"] {
+  color-scheme: dark;
+  --app-canvas: #202124;
+  --app-surface: #292a2d;
+  --app-sidebar: #252629;
+  --app-border: #414246;
+  --app-border-strong: #57585d;
+  --app-muted: #313236;
+  --app-hover: #38393d;
+  --app-accent: #a8c7fa;
+  --app-accent-rgb: 168, 199, 250;
+  --app-accent-hover: #c2d7ff;
+  --app-accent-soft: #334157;
+  --app-text: #e8eaed;
+  --app-text-regular: #c4c7c5;
+  --app-text-muted: #aeb4bc;
+  --app-text-disabled: #82888f;
+  --app-text-on-accent: #111827;
+}
+
+:root[data-theme="midnight"] {
+  color-scheme: dark;
+  --app-canvas: #0b1220;
+  --app-surface: #101a2d;
+  --app-sidebar: #0d1728;
+  --app-border: #23334d;
+  --app-border-strong: #354866;
+  --app-muted: #16243a;
+  --app-hover: #1d2d46;
+  --app-accent: #38bdf8;
+  --app-accent-rgb: 56, 189, 248;
+  --app-accent-hover: #7dd3fc;
+  --app-accent-soft: #12344e;
+  --app-text: #e0f2fe;
+  --app-text-regular: #b9d4e6;
+  --app-text-muted: #89a8be;
+  --app-text-disabled: #5f7d93;
+  --app-text-on-accent: #111827;
+}
+
+:root[data-theme="paper"] {
+  color-scheme: light;
+  --app-canvas: #f4f0e8;
+  --app-surface: #fffdf8;
+  --app-sidebar: #faf5ea;
+  --app-border: #ded5c4;
+  --app-border-strong: #cbbda6;
+  --app-muted: #f7f1e6;
+  --app-hover: #efe6d5;
+  --app-accent: #9a5b22;
+  --app-accent-rgb: 154, 91, 34;
+  --app-accent-hover: #b36f31;
+  --app-accent-soft: #f8e6d3;
+  --app-text: #30271f;
+  --app-text-regular: #5f5145;
+  --app-text-muted: #8b7a6c;
+  --app-text-disabled: #a89a8c;
+}
+
+:root[data-theme="cloud-blue"] {
+  color-scheme: light;
+  --app-canvas: #eef3fa;
+  --app-surface: #fbfdff;
+  --app-sidebar: #f7faff;
+  --app-border: #dce5f2;
+  --app-border-strong: #c8d6e8;
+  --app-muted: #f2f6fc;
+  --app-hover: #eaf2ff;
+  --app-accent: #4d86f7;
+  --app-accent-rgb: 77, 134, 247;
+  --app-accent-hover: #6ca2ff;
+  --app-accent-soft: #e4efff;
+  --app-text: #213047;
+  --app-text-regular: #50617a;
+  --app-text-muted: #8494aa;
+  --app-text-disabled: #a3b1c2;
+}
+
+:root[data-theme="arco"] {
+  color-scheme: light;
+  --app-canvas: #f2f3f5;
+  --app-surface: #ffffff;
+  --app-sidebar: #ffffff;
+  --app-border: #e5e6eb;
+  --app-border-strong: #c9cdd4;
+  --app-muted: #f7f8fa;
+  --app-hover: #f2f3f5;
+  --app-accent: #165dff;
+  --app-accent-rgb: 22, 93, 255;
+  --app-accent-hover: #4080ff;
+  --app-accent-soft: #e8f3ff;
+  --app-text: #1d2129;
+  --app-text-regular: #4e5969;
+  --app-text-muted: #86909c;
+  --app-text-disabled: #a9aeb8;
+}
+
+:root[data-theme="arco-dark"] {
+  color-scheme: dark;
+  --app-canvas: #17171a;
+  --app-surface: #232324;
+  --app-sidebar: #1d1d20;
+  --app-border: #3f3f43;
+  --app-border-strong: #57575d;
+  --app-muted: #2a2a2d;
+  --app-hover: #343438;
+  --app-accent: #3c7eff;
+  --app-accent-rgb: 60, 126, 255;
+  --app-accent-hover: #689fff;
+  --app-accent-soft: #253b63;
+  --app-text: #f2f3f5;
+  --app-text-regular: #c9cdd4;
+  --app-text-muted: #a9aeb8;
+  --app-text-disabled: #7d8492;
+  --app-text-on-accent: #111827;
+}
+
+:root {
+  background: var(--app-canvas);
+  color: var(--app-text);
+  --app-text-regular: #434343;
+  --app-brand: var(--app-accent);
+  --app-radius-sm: 4px;
+  --app-radius: 8px;
+  --app-radius-lg: 12px;
+
+  /* Semantic aliases keep feature styles theme-aware and remove page-local palette fallbacks. */
+  --app-bg: var(--app-canvas);
+  --app-surface-raised: var(--app-surface);
+  --app-surface-sunken: color-mix(in srgb, var(--app-muted) 72%, var(--app-canvas));
+  --app-surface-muted: var(--app-muted);
+  --app-surface-hover: var(--app-hover);
+  --app-border-subtle: color-mix(in srgb, var(--app-border) 62%, var(--app-surface));
+  --app-window-border: var(--app-border-strong);
+  --app-accent-border: color-mix(in srgb, var(--app-accent) 42%, var(--app-border));
+  --app-accent-ring: color-mix(in srgb, var(--app-accent) 28%, transparent);
+  --app-text-strong: var(--app-text);
+  --app-text-secondary: var(--app-text-regular);
+  --app-text-on-status: #ffffff;
+  --app-success: #22a06b;
+  --app-success-soft: color-mix(in srgb, var(--app-success) 10%, var(--app-surface));
+  --app-success-border: color-mix(in srgb, var(--app-success) 32%, var(--app-border));
+  --app-warning: #d9822b;
+  --app-warning-soft: color-mix(in srgb, var(--app-warning) 10%, var(--app-surface));
+  --app-warning-border: color-mix(in srgb, var(--app-warning) 34%, var(--app-border));
+  --app-danger: #d14343;
+  --app-danger-soft: color-mix(in srgb, var(--app-danger) 10%, var(--app-surface));
+  --app-danger-border: color-mix(in srgb, var(--app-danger) 34%, var(--app-border));
+  --app-info: var(--app-accent);
+  --app-info-soft: var(--app-accent-soft);
+  --app-info-border: var(--app-accent-border);
+  --app-code-surface: #11141b;
+  --app-code-surface-strong: #090b10;
+  --app-code-border: #292d38;
+  --app-code-text: #d8dee9;
+  --app-code-text-muted: #9ca3af;
+  --app-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --app-mono-font: var(--app-font-mono);
+  --el-font-family: var(--app-font-sans);
+  --el-color-primary: var(--app-accent);
+  --el-color-primary-rgb: var(--app-accent-rgb);
+  --el-color-primary-light-3: color-mix(in srgb, var(--app-accent) 76%, var(--app-surface));
+  --el-color-primary-light-5: color-mix(in srgb, var(--app-accent) 58%, var(--app-surface));
+  --el-color-primary-light-7: color-mix(in srgb, var(--app-accent) 35%, var(--app-surface));
+  --el-color-primary-light-8: color-mix(in srgb, var(--app-accent) 22%, var(--app-surface));
+  --el-color-primary-light-9: var(--app-accent-soft);
+  --el-color-primary-dark-2: color-mix(in srgb, var(--app-accent) 78%, #000);
+  --el-color-info: var(--app-text-muted);
+  --el-bg-color: var(--app-surface);
+  --el-bg-color-page: var(--app-canvas);
+  --el-bg-color-overlay: var(--app-surface);
+  --el-fill-color: var(--app-muted);
+  --el-fill-color-blank: var(--app-surface);
+  --el-fill-color-light: var(--app-muted);
+  --el-fill-color-lighter: color-mix(in srgb, var(--app-surface) 85%, var(--app-muted));
+  --el-fill-color-dark: var(--app-hover);
+  --el-border-color: var(--app-border-strong);
+  --el-border-color-light: var(--app-border);
+  --el-border-color-lighter: color-mix(in srgb, var(--app-border) 62%, var(--app-surface));
+  --el-text-color-primary: var(--app-text);
+  --el-text-color-regular: var(--app-text-regular);
+  --el-text-color-secondary: var(--app-text-muted);
+  --el-text-color-placeholder: color-mix(in srgb, var(--app-text-muted) 65%, var(--app-surface));
+  --el-menu-hover-bg-color: var(--app-hover);
+  --el-menu-active-color: var(--app-accent);
+  /* 加载蒙层跟随主题表面色半透；rgb(0 0 0 / 48%) 的深色蒙层已被用户明确禁止。 */
+  --el-mask-color: color-mix(in srgb, var(--app-surface) 70%, transparent);
+  --el-mask-color-extra-light: color-mix(in srgb, var(--app-surface) 30%, transparent);
+  --el-overlay-color: rgb(0 0 0 / 48%);
+  --el-overlay-color-light: rgb(0 0 0 / 36%);
+  --el-overlay-color-lighter: rgb(0 0 0 / 24%);
+  --el-border-color-hover: color-mix(in srgb, var(--app-accent) 52%, var(--app-surface));
+  --el-hover-color: var(--app-accent-soft);
+  --el-box-shadow: none;
+  --el-box-shadow-light: none;
+  --el-box-shadow-lighter: none;
+  --el-box-shadow-dark: none;
+
+  /* Element Plus must consume the same palette as custom workspaces and poppers. */
+  --el-fill-color-extra-light: color-mix(in srgb, var(--app-surface) 92%, var(--app-muted));
+  --el-fill-color-darker: var(--app-hover);
+  --el-border-color-extra-light: color-mix(in srgb, var(--app-border) 44%, var(--app-surface));
+  --el-border-color-dark: var(--app-border-strong);
+  --el-border-color-darker: color-mix(in srgb, var(--app-border-strong) 78%, var(--app-text));
+  --el-text-color-disabled: color-mix(in srgb, var(--app-text-muted) 62%, var(--app-surface));
+  --el-disabled-bg-color: var(--app-muted);
+  --el-disabled-text-color: var(--el-text-color-disabled);
+  --el-disabled-border-color: var(--app-border);
+
+  --el-color-success: var(--app-success);
+  --el-color-success-rgb: 34, 160, 107;
+  --el-color-warning: var(--app-warning);
+  --el-color-warning-rgb: 217, 130, 43;
+  --el-color-danger: var(--app-danger);
+  --el-color-danger-rgb: 209, 67, 67;
+  --el-color-error: var(--el-color-danger);
+  --el-color-error-rgb: var(--el-color-danger-rgb);
+  --el-color-info-rgb: 134, 144, 156;
+  --el-color-success-light-3: color-mix(in srgb, var(--el-color-success) 76%, var(--app-surface));
+  --el-color-success-light-5: color-mix(in srgb, var(--el-color-success) 58%, var(--app-surface));
+  --el-color-success-light-7: color-mix(in srgb, var(--el-color-success) 35%, var(--app-surface));
+  --el-color-success-light-8: color-mix(in srgb, var(--el-color-success) 22%, var(--app-surface));
+  --el-color-success-light-9: color-mix(in srgb, var(--el-color-success) 12%, var(--app-surface));
+  --el-color-success-dark-2: color-mix(in srgb, var(--el-color-success) 78%, #000);
+  --el-color-warning-light-3: color-mix(in srgb, var(--el-color-warning) 76%, var(--app-surface));
+  --el-color-warning-light-5: color-mix(in srgb, var(--el-color-warning) 58%, var(--app-surface));
+  --el-color-warning-light-7: color-mix(in srgb, var(--el-color-warning) 35%, var(--app-surface));
+  --el-color-warning-light-8: color-mix(in srgb, var(--el-color-warning) 22%, var(--app-surface));
+  --el-color-warning-light-9: color-mix(in srgb, var(--el-color-warning) 12%, var(--app-surface));
+  --el-color-warning-dark-2: color-mix(in srgb, var(--el-color-warning) 78%, #000);
+  --el-color-danger-light-3: color-mix(in srgb, var(--el-color-danger) 76%, var(--app-surface));
+  --el-color-danger-light-5: color-mix(in srgb, var(--el-color-danger) 58%, var(--app-surface));
+  --el-color-danger-light-7: color-mix(in srgb, var(--el-color-danger) 35%, var(--app-surface));
+  --el-color-danger-light-8: color-mix(in srgb, var(--el-color-danger) 22%, var(--app-surface));
+  --el-color-danger-light-9: color-mix(in srgb, var(--el-color-danger) 12%, var(--app-surface));
+  --el-color-danger-dark-2: color-mix(in srgb, var(--el-color-danger) 78%, #000);
+  --el-color-error-light-3: var(--el-color-danger-light-3);
+  --el-color-error-light-5: var(--el-color-danger-light-5);
+  --el-color-error-light-7: var(--el-color-danger-light-7);
+  --el-color-error-light-8: var(--el-color-danger-light-8);
+  --el-color-error-light-9: var(--el-color-danger-light-9);
+  --el-color-error-dark-2: var(--el-color-danger-dark-2);
+  --el-color-info-light-3: color-mix(in srgb, var(--el-color-info) 76%, var(--app-surface));
+  --el-color-info-light-5: color-mix(in srgb, var(--el-color-info) 58%, var(--app-surface));
+  --el-color-info-light-7: color-mix(in srgb, var(--el-color-info) 35%, var(--app-surface));
+  --el-color-info-light-8: color-mix(in srgb, var(--el-color-info) 22%, var(--app-surface));
+  --el-color-info-light-9: color-mix(in srgb, var(--el-color-info) 12%, var(--app-surface));
+  --el-color-info-dark-2: color-mix(in srgb, var(--el-color-info) 78%, #000);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 960px;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+html.app-popup-window,
+html.app-popup-window body,
+html.app-popup-window #app {
+  min-width: 0;
+}
+
+/* views[].floating windows are transparent: only the plugin page's own pixels show. */
+html.app-floating-window,
+html.app-floating-window body,
+html.app-floating-window #app {
+  min-width: 0;
+  background: transparent;
+}
+
+body {
+  overflow: hidden;
+  background: var(--app-canvas);
+  font-size: var(--app-ui-font-size);
+}
+
+/* Element Plus positions teleported poppers with viewport coordinates. Cancel the
+   body-level UI zoom on its shared overlay container so tooltips, dropdowns,
+   popovers, and popconfirms keep the same viewport coordinate system. */
+body > [id^="el-popper-container-"] {
+  zoom: var(--app-ui-overlay-scale);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+.app-frame {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--app-surface);
+}
+
+.app-top-tabs {
+  display: flex;
+  height: var(--app-top-tabs-height);
+  min-height: var(--app-top-tabs-height);
+  align-items: stretch;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface);
+  user-select: none;
+}
+
+.app-brand-mark {
+  display: flex;
+  width: var(--app-activity-rail-width);
+  min-width: var(--app-activity-rail-width);
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--app-border);
+}
+
+.app-brand-mark img {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.app-top-tabs__scroll {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Top workspace tabs: Element Plus card tabs sized by AppTabBar's width partition. */
+.app-top-tabs__workspace-tabs.el-tabs {
+  --el-tabs-header-height: var(--app-top-tabs-height);
+  --app-workspace-tabs-close-size: 16px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.app-top-tabs__workspace-tabs.el-tabs--card > .el-tabs__header {
+  height: var(--app-top-tabs-height);
+  margin: 0;
+  border-bottom: 0;
+}
+
+.app-top-tabs__workspace-tabs > .el-tabs__header .el-tabs__nav-wrap {
+  margin-bottom: 0;
+}
+
+.app-top-tabs__workspace-tabs > .el-tabs__header .el-tabs__nav-wrap.is-scrollable {
+  padding: 0;
+}
+
+.app-top-tabs__workspace-tabs > .el-tabs__header .el-tabs__nav-prev,
+.app-top-tabs__workspace-tabs > .el-tabs__header .el-tabs__nav-next {
+  display: none;
+}
+
+/* Two modifier classes outrank Element Plus card padding/hover rules regardless of load order. */
+.app-top-tabs .app-top-tabs__workspace-tabs.el-tabs--card.el-tabs--top > .el-tabs__header .el-tabs__item {
+  height: var(--app-top-tabs-height);
+  margin: 0;
+  border: 0;
+  border-right: 1px solid var(--app-border);
+  border-radius: 0;
+  padding: 0 6px 0 0;
+  background: transparent;
+  color: var(--app-text-secondary);
+  font-size: var(--app-ui-font-size-extra-small);
+  font-weight: 500;
+  line-height: var(--app-top-tabs-height);
+  transition: none;
+  --wails-draggable: no-drag;
+}
+
+.app-top-tabs
+  .app-top-tabs__workspace-tabs.el-tabs--card.el-tabs--top
+  > .el-tabs__header
+  .el-tabs__item:focus-visible {
+  outline: 0;
+  background: var(--app-muted);
+  color: var(--app-accent);
+}
+
+.app-top-tabs
+  .app-top-tabs__workspace-tabs.el-tabs--card.el-tabs--top
+  > .el-tabs__header
+  .el-tabs__item.is-active {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+  font-weight: 600;
+}
+
+.app-top-tabs__workspace-tabs.el-tabs--card > .el-tabs__header .el-tabs__item .is-icon-close {
+  height: 16px;
+  flex: none;
+  margin-left: 2px;
+  right: 0;
+  font-size: 12px;
+  transition: none;
+}
+
+.app-workspace-tab-menu {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+}
+
+.app-workspace-tab {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  padding-left: 6px;
+  color: inherit;
+}
+
+.app-workspace-tab__label {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-inline-rename {
+  min-width: 0;
+  border: 1px solid var(--app-accent);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+}
+.app-workspace-tab__rename {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+}
+
+.app-workspace-tab__rename .el-input__wrapper {
+  min-height: 24px;
+  padding: 0 5px;
+}
+
+.app-window-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px;
+  border-left: 1px solid var(--app-border);
+}
+
+.app-header-button.el-button {
+  margin: 0;
+  padding: 0;
+}
+
+.app-header-button {
+  display: inline-flex;
+  height: 25px;
+  min-width: 25px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--app-text-secondary);
+  cursor: pointer;
+}
+
+.app-header-button:hover {
+  border-color: var(--app-border-strong);
+  background: var(--app-surface);
+  color: var(--app-accent);
+}
+
+.app-header-button--agent .el-icon {
+  transform: translateY(-0.5px);
+}
+
+/* 双类选择器压过 .app-header-button.el-button 的 padding: 0，保证切换按钮有内边距。 */
+.app-header-button.app-header-selector {
+  padding: 0 8px;
+  border-color: var(--app-border);
+  background: var(--app-surface);
+}
+
+.app-header-chevron {
+  color: var(--app-text-muted);
+  font-size: 11px;
+}
+
+.app-workspace-shell {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.app-workspace-column {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-activity-bar {
+  display: flex;
+  width: var(--app-activity-rail-width);
+  min-width: var(--app-activity-rail-width);
+  flex-direction: column;
+  align-items: center;
+  border-right: 1px solid var(--app-border);
+  background: var(--app-sidebar);
+  padding: 8px 6px;
+}
+
+.app-activity-bar__nav,
+.app-activity-bar__bottom {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+
+.app-activity-bar__nav-scroll {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+.app-activity-bar__nav-scroll .el-scrollbar__wrap {
+  overflow-x: hidden;
+}
+
+.app-activity-bar__bottom {
+  flex: 0 0 auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--app-border);
+}
+
+.app-activity-button.el-button {
+  --el-button-size: 36px;
+  --el-button-text-color: var(--app-text-secondary);
+  --el-button-hover-text-color: var(--app-accent);
+  --el-button-hover-bg-color: var(--app-hover);
+  --el-button-active-bg-color: var(--app-accent-soft);
+  display: flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--app-text-secondary);
+  margin: 0;
+  padding: 0;
+  font-size: 18px;
+}
+
+.app-activity-button.el-button.is-active {
+  --el-button-text-color: var(--app-accent);
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.app-activity-button.is-dragging {
+  opacity: 0.35;
+}
+
+/* 一级侧栏文字标签模式：图标下方显示文字，轨道加宽；隐藏文字回到 56px。 */
+.app-activity-bar,
+.app-brand-mark {
+  transition:
+    width 0.16s ease,
+    min-width 0.16s ease;
+}
+
+.app-frame--sidebar-labels {
+  --app-activity-rail-width: var(--app-activity-rail-labels-width);
+}
+
+.app-frame--sidebar-labels .app-activity-bar,
+.app-frame--sidebar-labels .app-brand-mark {
+  width: var(--app-activity-rail-labels-width);
+  min-width: var(--app-activity-rail-labels-width);
+}
+
+.app-frame--sidebar-labels .app-activity-button.el-button {
+  width: 100%;
+  height: auto;
+  min-height: 46px;
+  padding: 5px 2px 4px;
+}
+
+.app-frame--sidebar-labels .app-activity-bar__labels-toggle.el-button {
+  min-height: 36px;
+}
+
+.app-frame--sidebar-labels .app-activity-button.el-button > span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+/* 侧栏文字标签最多展示四个字宽，超出以省略号截断，完整名称由 title 悬停展示。 */
+.app-activity-button__label {
+  max-width: 4em;
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-workspace-content {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--app-surface);
+}
+
+/* Docked AI reserves real App Shell space instead of covering workspace content. */
+.app-workspace-shell.is-ai-docked .app-workspace-content {
+  margin-right: var(--ai-assistant-width, 420px);
+}
+
+@media (max-width: 900px) {
+  /* Preserve a usable workspace on small windows; the drawer falls back to overlay. */
+  .app-workspace-shell.is-ai-docked .app-workspace-content {
+    margin-right: 0;
+  }
+}

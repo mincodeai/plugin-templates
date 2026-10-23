@@ -1,0 +1,14 @@
+# Example file: open it in MinCode after installing the plugin.
+parallel = false
+
+task build-ui
+	run "pnpm build"
+end
+
+task test
+	when parallel
+		run "pnpm test --parallel"
+	else
+		run "pnpm test"
+	end
+end

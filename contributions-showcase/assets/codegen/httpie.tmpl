@@ -1,0 +1,2 @@
+{{! HTTPie command line. escape: shell, so every bare variable is single-quoted for POSIX shells. Sensitive headers arrive as $placeholders. }}
+http {{method}} {{url}}{{#headers}} {{name}}:{{value}}{{/headers}}{{#hasBody}} --raw {{body}}{{/hasBody}}

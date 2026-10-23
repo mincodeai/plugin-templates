@@ -1,0 +1,17 @@
+{
+  "defaultToken": "",
+  "tokenPostfix": ".mcdemo",
+  "keywords": ["task", "run", "when", "else", "end", "true", "false"],
+  "tokenizer": {
+    "root": [
+      ["#.*$", "comment"],
+      ["[a-zA-Z_][\\w-]*(?=\\s*=)", "variable"],
+      ["[a-zA-Z_][\\w-]*", { "cases": { "@keywords": "keyword", "@default": "identifier" } }],
+      ["\\d+(\\.\\d+)?", "number"],
+      ["\"([^\"\\\\]|\\\\.)*\"", "string"],
+      ["[{}()\\[\\]]", "@brackets"],
+      ["[=:,]", "delimiter"],
+      ["[ \\t\\r\\n]+", "white"]
+    ]
+  }
+}

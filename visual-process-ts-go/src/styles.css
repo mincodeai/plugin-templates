@@ -1,0 +1,54 @@
+/* Theme variables (--app-*) and thin scrollbars come from ./mincode/theme.css,
+   which follows the host theme through data-theme and contributed tokens. */
+html, body, #app { margin: 0; min-width: 0; height: 100%; }
+* { box-sizing: border-box; }
+body {
+  overflow: auto;
+  background: var(--app-surface);
+  color: var(--app-text);
+  font-size: var(--app-ui-font-size);
+  line-height: 1.5;
+}
+.plugin-page { width: min(900px, 100%); margin: 0 auto; padding: 24px; }
+.plugin-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.plugin-heading h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.plugin-heading p { margin: 8px 0 0; color: var(--app-text-muted); }
+.plugin-status { flex: none; padding: 2px 8px; border: 1px solid var(--app-border-strong); border-radius: 4px; font-size: var(--app-ui-font-size-small); }
+.plugin-status[data-state="connected"] { border-color: var(--app-accent); color: var(--app-accent); }
+.plugin-alert { margin: 0 0 16px; padding: 8px 12px; border: 1px solid var(--app-danger-border); border-radius: 6px; background: var(--app-danger-soft); color: var(--app-danger); }
+.plugin-alert[hidden] { display: none; }
+.plugin-card { padding: 16px; border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-surface); }
+.plugin-form { display: grid; gap: 8px; justify-items: start; }
+.plugin-label { font-size: var(--app-ui-font-size-small); color: var(--app-text-muted); }
+.plugin-input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 6px;
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+}
+.plugin-button {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--app-accent);
+  border-radius: 6px;
+  background: var(--app-accent);
+  color: var(--app-text-on-accent);
+  font: inherit;
+  cursor: pointer;
+}
+.plugin-button:hover:not(:disabled) { background: var(--app-accent-hover); }
+.plugin-button:disabled { border-color: var(--app-border-strong); background: var(--app-hover); color: var(--app-text-disabled); cursor: not-allowed; }
+.plugin-input:focus-visible, .plugin-button:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 1px; }
+.plugin-result { margin-top: 16px; }
+.plugin-empty { margin: 0; color: var(--app-text-muted); }
+.plugin-details { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0; }
+.plugin-details dt { color: var(--app-text-muted); }
+.plugin-details dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .plugin-page { padding: 16px; }
+  .plugin-heading { flex-direction: column; }
+}

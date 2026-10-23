@@ -1,0 +1,5 @@
+.mincode/
+node_modules/
+dist-plugin/
+*.log
+backend/mincode-visual-vue-go-plugin

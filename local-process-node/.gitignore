@@ -1,0 +1,4 @@
+.mincode/
+node_modules/
+dist-plugin/
+*.log
