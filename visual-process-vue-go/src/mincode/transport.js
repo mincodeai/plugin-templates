@@ -5,9 +5,11 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
   const fragment = new URLSearchParams(location.hash.slice(1));
   const session = { sessionId: fragment.get('mincodeSession') ?? '', nonce: fragment.get('nonce') ?? '', generation: Number(fragment.get('generation')) };
   const requestTimeoutGraceMs = 5000, legacyRequestTimeoutMs = 40000;
-  let port, sequence = 0, requestTimeoutMs = legacyRequestTimeoutMs, callsSupported = false, binarySupported = false, tasksSupported = false, taskEventsSupported = false, clipboardWriteSupported = false, trustedConfirmSupported = false, configurationSupported = false, documentSupported = false, documentInfo = null, documentSaveHandler = null, openRequestSupported = false, openRequestHandler = null, openRequestSubscribed = false, floatingSupported = false, floatingClickHandler = null, floatingClickToken = '', visibilitySupported = false, pageVisible = true, connected = false, prefetchSupported = false, prefetchAction = '', prefetchOutcome = null, prefetchConsumed = false, closed = false, locale = 'zh';
+  let port, sequence = 0, requestTimeoutMs = legacyRequestTimeoutMs, callsSupported = false, messagesSupported = false, binarySupported = false, tasksSupported = false, taskEventsSupported = false, clipboardWriteSupported = false, trustedConfirmSupported = false, configurationSupported = false, documentSupported = false, documentInfo = null, documentSaveHandler = null, openRequestSupported = false, openRequestHandler = null, openRequestSubscribed = false, floatingSupported = false, floatingClickHandler = null, floatingClickToken = '', visibilitySupported = false, pageVisible = true, connected = false, prefetchSupported = false, prefetchAction = '', prefetchOutcome = null, prefetchConsumed = false, closed = false, locale = 'zh';
   const pending = new Map();
   const binaryListeners = new Set();
+  const messageListeners = new Set();
+  const maxMessageBytes = 256 * 1024;
   const taskListeners = new Set();
   const visibilityListeners = new Set();
   // prefetched(action) callers waiting for the connect message or the host's prefetch push.
@@ -70,6 +72,33 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     if (typeof method !== 'string' || method.length > 128 || !methodPattern.test(method) || /^(plugin|host|rpc)\./i.test(method)) return Promise.reject(Object.assign(new Error(message('方法名无效', 'Invalid method name')), { code: 'invalid-request' }));
     return request({ type: 'mincode.plugin.call', method, params: params === undefined ? null : params });
   }
+  // features.messages: free-form JSON to this plugin's process (plugin.ui.message), like VS Code's webview postMessage.
+  // Messages go out one at a time in posting order, so a burst never hits the eight-request bound (at most
+  // maxQueuedMessages wait here); a busy process queue is retried like call(). The promise settles once the
+  // process accepted the message. No risk confirmation, never AI.
+  let messageChain = Promise.resolve(), queuedMessages = 0;
+  const maxQueuedMessages = 1024;
+  function postMessage(value) {
+    if (!messagesSupported) return Promise.reject(Object.assign(new Error(message('宿主不支持插件消息', 'Host does not support plugin messages')), { code: 'not-allowed' }));
+    let json;
+    try { json = JSON.stringify(value); } catch { json = undefined; }
+    if (json === undefined || json === 'null') return Promise.reject(Object.assign(new Error(message('消息必须是可序列化为 JSON 的非空值', 'The message must be a non-null JSON-serializable value')), { code: 'invalid-request' }));
+    if (new TextEncoder().encode(json).byteLength > maxMessageBytes - 1024) return Promise.reject(Object.assign(new Error(message('消息超过 256 KiB', 'The message exceeds 256 KiB')), { code: 'payload-too-large' }));
+    if (queuedMessages >= maxQueuedMessages) return Promise.reject(Object.assign(new Error(message('待发送消息过多，请稍后重试', 'Too many queued messages; try again later')), { code: 'busy' }));
+    const body = { type: 'mincode.plugin.message', message: JSON.parse(json) };
+    let attempt = 0;
+    const send = () => request(body);
+    const retry = cause => {
+      if (cause?.code !== 'busy' || attempt >= busyRetryDelaysMs.length || closed) throw cause;
+      const delay = busyRetryDelaysMs[attempt];
+      attempt += 1;
+      return waitRetry(delay).then(send).catch(retry);
+    };
+    queuedMessages += 1;
+    const delivery = messageChain.then(() => send().catch(retry));
+    messageChain = delivery.catch(() => undefined);
+    return delivery.then(() => undefined).finally(() => { queuedMessages -= 1; });
+  }
   function sendBinary(channel, data) {
     if (!binarySupported) return Promise.reject(Object.assign(new Error(message('插件未启用二进制通道', 'This plugin does not use the binary channel')), { code: 'not-allowed' }));
     const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data instanceof Uint8Array ? data : null;
@@ -88,6 +117,7 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     if (closed || event.source !== parent || message?.type !== 'mincode.host.connect' || message.protocolVersion !== 1 || message.sessionId !== session.sessionId || message.nonce !== session.nonce || message.generation !== session.generation || (message.requestTimeoutMs !== undefined && (!Number.isSafeInteger(message.requestTimeoutMs) || message.requestTimeoutMs < 1000 || message.requestTimeoutMs > 300000)) || event.ports.length !== 1) return;
     removeEventListener('message', connect); requestTimeoutMs = message.requestTimeoutMs ?? legacyRequestTimeoutMs; port = event.ports[0];
     callsSupported = message.features?.calls === 1;
+    messagesSupported = message.features?.messages === 1;
     binarySupported = message.features?.binary === 1;
     tasksSupported = message.features?.tasks === 1;
     taskEventsSupported = tasksSupported && message.features?.taskEvents === 1;
@@ -119,6 +149,8 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
       if (data?.type === 'mincode.host.visibility') { if (visibilitySupported && typeof data.visible === 'boolean' && data.visible !== pageVisible) { pageVisible = data.visible; for (const listener of [...visibilityListeners]) { try { listener(pageVisible); } catch (cause) { onError(String(cause?.message ?? cause)); } } } return; }
       // features.taskEvents: the host pushes snapshots of tasks this page started as soon as they change.
       if (data?.type === 'mincode.host.task.changed') { if (taskEventsSupported && typeof data.taskId === 'string' && data.snapshot && typeof data.snapshot === 'object' && data.snapshot.taskId === data.taskId) for (const listener of [...taskListeners]) { try { listener({ ...data.snapshot }); } catch (cause) { onError(String(cause?.message ?? cause)); } } return; }
+      // Messages the plugin process posted with host.ui.postMessage, in the order it sent them.
+      if (data?.type === 'mincode.host.message') { if (messagesSupported && data.message !== undefined && data.message !== null) for (const listener of [...messageListeners]) { try { listener(data.message); } catch (cause) { onError(String(cause?.message ?? cause)); } } return; }
       // Binary frames the plugin process sent with sendBinary (runtime.transport "framed").
       if (data?.type === 'mincode.host.binary') { if (typeof data.channel === 'string' && data.data instanceof ArrayBuffer) for (const listener of [...binaryListeners]) { try { listener(data.channel, new Uint8Array(data.data)); } catch (cause) { onError(String(cause?.message ?? cause)); } } return; }
       // Host-read desktop drops for pages that opt in (bounded and validated by the host; the page re-validates).
@@ -274,6 +306,7 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     for (const entry of retryWaits) { clearTimeout(entry.timer); entry.reject(Object.assign(new Error(message('插件页面已关闭', 'Plugin page closed')), { code: 'busy' })); }
     retryWaits.clear();
     binaryListeners.clear();
+    messageListeners.clear();
     taskListeners.clear();
     visibilityListeners.clear();
     settlePrefetchWaiters();
@@ -286,6 +319,13 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
   return {
     call, pickPath(kind, options) { return call('', null, kind, options); }, close,
     request: callMethod,
+    messagesSupported() { return messagesSupported; },
+    postMessage,
+    onMessage(fn) {
+      if (typeof fn !== 'function') return () => {};
+      messageListeners.add(fn);
+      return () => { messageListeners.delete(fn); };
+    },
     binary: {
       supported() { return binarySupported; },
       send: sendBinary,

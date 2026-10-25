@@ -2,12 +2,14 @@
   "format": 1,
   "source": "MinCode plugin UI",
   "files": {
+    "compact-density.css": "472042d5260071bc61d11f636ada8682909ea3148cb83df7f9cc7bfd50fd4528",
+    "element-plus-controls.css": "26bbd86cd349767d397c618e6ecca47f04259ee94581ddb6ed0bcc2c38c9f055",
     "element-plus-styles.js": "828858a8c057513f64c85887ebea978d447223719cf003c0f0b3382a45ce2edd",
     "form-payload.mjs": "67b01ca5fd8fd88af4203544cebb05b9fc042d3524ef2b58bf4d51a00596fe32",
-    "foundation.css": "19c3d855f79d5b2888a0240f7f9517d440613b3f59edb19e677f16f4514d6486",
+    "foundation.css": "9b3bf355bfa594f5db7179bb88d57f0c00ecbdb1a565ce396ac2782aed036090",
     "messages.mjs": "af44d4cfc5ded77e98f115d3816afc9ddca8bd635bb8989de7fff7b27581339b",
     "mount.d.ts": "d59afe94c81255dede7cdce64533c2854f7d0c75ee09508083e72b2c306c69fd",
-    "mount.js": "799402699c6b1fdda083db5422f23406b311b2e3c8946382a9a7b977bfb1bebf",
+    "mount.js": "0550376ba8bbb09d9c5d69900dfa4cdb6d1015d640eb7fb0ec540fd1fbc7713d",
     "OfficialPluginPage.vue": "deba65c01bddb43261db95b0b40830e2c9a6d7c79fa2e160f3f9a713be0c8f3c",
     "page.css": "7ca1556f368ac00ce429481b91413c3d444dad734b32ae3da83c721d13b5c5e7",
     "path-fields.mjs": "4fab186078d8947a10bc644726248e7d15f76e0cdd614bfd3ecda1b5046d880b",
@@ -21,8 +23,9 @@
     "task-messages.ts": "423b4d944c6413dd398af0f6c08804bc7c76e0882008efe1be80d8bedde186e5",
     "tasks.d.mts": "f0c8bf030f5bf5d1bb82af1a11aabbcbc0257b33f1d91a80518f5819694e08db",
     "tasks.mjs": "6d0187312caf4edcecc97e3b55cd37d9375bf7a12c34d8921cf495d7af53037a",
+    "theme-inputs.css": "79346cb99e7f278e9258484f123e42feb72d30cb0762d63da1126c444f62371d",
     "theme-tokens.js": "f729d69bfadf72d95f84960e2d6e71b52bfc0dbed126ff4bdcf295e0fdbbb18c",
-    "transport.d.ts": "eb398bc3996902f55bdd7b7823869d7e39a73d9bd697e71f2964406cfd5a22b6",
-    "transport.js": "a473197853b19efd17190411d485efc93aa64b1476d3359c19b9d71cb859a638"
+    "transport.d.ts": "2252f96b60e9cd1e9355b7cb57c97726d9736b38112c8cf7df403eec623f1e0b",
+    "transport.js": "8dedfc37c90a8bf2282bb031e3e9deda26f08fddd03b1e3902af3a4f37cebc08"
   }
 }

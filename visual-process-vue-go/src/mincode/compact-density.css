@@ -1,0 +1,122 @@
+/* Compact density: keep desktop tools information-dense without shrinking headings or primary affordances. */
+:root {
+  --el-font-size-extra-small: var(--app-ui-font-size-extra-small);
+  --el-font-size-small: var(--app-ui-font-size-small);
+  --el-font-size-base: var(--app-ui-font-size);
+  --el-font-size-medium: var(--app-ui-font-size-large);
+  --el-font-size-large: calc(var(--app-ui-font-size) + 2px);
+  --el-component-size: 28px;
+  --el-component-size-small: 24px;
+  --el-component-size-large: 32px;
+}
+
+body {
+  font-family: var(--app-font-sans);
+  font-size: var(--app-ui-font-size);
+  line-height: 1.45;
+}
+
+.el-button {
+  height: var(--el-component-size);
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: var(--app-ui-font-size);
+}
+
+.el-button--small {
+  height: var(--el-component-size-small);
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: var(--app-ui-font-size-small);
+}
+
+.el-button--large {
+  height: var(--el-component-size-large);
+  min-height: 32px;
+  font-size: var(--app-ui-font-size-large);
+}
+
+.el-input__wrapper,
+.el-select__wrapper {
+  min-height: 28px;
+  padding: 1px 9px;
+  font-size: var(--app-ui-font-size);
+}
+
+.el-input--small .el-input__wrapper,
+.el-select--small .el-select__wrapper {
+  min-height: 24px;
+  padding: 1px 7px;
+  font-size: var(--app-ui-font-size-small);
+}
+
+.el-input--large .el-input__wrapper,
+.el-select--large .el-select__wrapper {
+  min-height: var(--el-component-size-large);
+}
+
+.el-input__inner,
+.el-select__selected-item,
+.el-select__placeholder,
+.el-textarea__inner,
+.el-input-number .el-input__inner {
+  font-size: var(--app-ui-font-size);
+}
+
+.el-textarea__inner {
+  padding: 7px 9px;
+  line-height: 1.5;
+}
+
+.el-input-number,
+.el-input-number .el-input__wrapper {
+  min-height: 28px;
+}
+
+.el-form-item__label,
+.el-checkbox,
+.el-radio,
+.el-tabs__item,
+.el-table,
+.el-dropdown-menu__item {
+  font-size: var(--app-ui-font-size);
+}
+
+.el-tabs__item {
+  height: 34px;
+  line-height: 34px;
+}
+
+.app-workspace-tab {
+  font-size: var(--app-ui-font-size-extra-small);
+}
+
+.app-header-button,
+.app-header-selector {
+  font-size: var(--app-ui-font-size-extra-small);
+}
+
+/* Softer borders: reserve contrast for focus, selection, and destructive states.
+ * The palette remains derived from the active theme; do not redefine app tokens here. */
+:root {
+  --el-border-color: var(--app-border-strong);
+  --el-border-color-light: var(--app-border);
+  --el-border-color-lighter: color-mix(in srgb, var(--app-border) 62%, var(--app-surface));
+}
+
+.el-button--default {
+  border-color: var(--app-border-strong);
+}
+
+.el-card,
+.el-popover.el-popper,
+.el-dropdown__popper .el-dropdown-menu,
+.el-select__popper.el-popper,
+.el-picker__popper.el-popper,
+.el-dialog {
+  border-color: var(--app-border);
+}
+
+.el-table {
+  --el-table-border-color: var(--app-border);
+}

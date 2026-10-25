@@ -560,6 +560,9 @@ const FRAME_JSON = 0;
 const FRAME_BINARY = 1;
 export const MAX_BINARY_BYTES = 8 * 1024 * 1024;
 const MAX_JSON_FRAME_BYTES = 1_048_576;
+// features.largeStorage: a host.storage.set request or a host reply carrying a
+// full 4 MiB storage value. Mirrors pluginRPCMaxStorageMessage on the host.
+export const LARGE_STORAGE_MESSAGE_BYTES = 4 * 1024 * 1024 + 64 * 1024;
 const CHANNEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
 
 function encodeFrame(kind, payload) {
@@ -580,7 +583,8 @@ export function encodeBinaryFrame(channel, data) {
 }
 
 // Returns a 'data' listener that reassembles frames and calls onFrame(kind, payload).
-export function createFrameReader(onFrame, onError) {
+// maxJsonBytes() is read per frame, so a limit raised by negotiation applies at once.
+export function createFrameReader(onFrame, onError, { maxJsonBytes = () => MAX_JSON_FRAME_BYTES } = {}) {
   let buffered = Buffer.alloc(0);
   let failed = false;
   return chunk => {
@@ -589,7 +593,7 @@ export function createFrameReader(onFrame, onError) {
     while (buffered.length >= 5) {
       const kind = buffered.readUInt8(0);
       const length = buffered.readUInt32BE(1);
-      const limit = kind === FRAME_JSON ? MAX_JSON_FRAME_BYTES - 1 : kind === FRAME_BINARY ? 2 + 128 + MAX_BINARY_BYTES : -1;
+      const limit = kind === FRAME_JSON ? maxJsonBytes() - 1 : kind === FRAME_BINARY ? 2 + 128 + MAX_BINARY_BYTES : -1;
       if (length > limit || (kind === FRAME_BINARY && length < 2)) { failed = true; onError(new Error('frame kind or length is invalid')); return; }
       if (buffered.length < 5 + length) return;
       const payload = buffered.subarray(5, 5 + length);
@@ -666,6 +670,11 @@ export function start(createActions, {
   // taskEventIntervalMs, terminal states at once). false keeps polling only.
   taskEvents = true,
   taskEventIntervalMs = 100,
+  // features.largeStorage: when the host offers it, storage values up to 4 MiB
+  // may be read and written (host replies and host.storage.set requests up to
+  // LARGE_STORAGE_MESSAGE_BYTES). Hosts without it keep every message within
+  // 1 MiB. createStorageAPI still applies its own maxValueBytes.
+  largeStorage = false,
 } = {}) {
   if (transport !== 'jsonl' && transport !== 'framed') throw new TypeError("transport must be 'jsonl' or 'framed'");
   if (onBinary !== undefined && typeof onBinary !== 'function') throw new TypeError('onBinary must be a function');
@@ -679,6 +688,7 @@ export function start(createActions, {
   if (taskGate !== 'shared' && taskGate !== 'separate') throw new TypeError("taskGate must be 'shared' or 'separate'");
   if (!Array.isArray(concurrentActions) || concurrentActions.some(name => typeof name !== 'string' || !name)) throw new TypeError('concurrentActions must be an array of action names');
   if (typeof taskEvents !== 'boolean') throw new TypeError('taskEvents must be a boolean');
+  if (typeof largeStorage !== 'boolean') throw new TypeError('largeStorage must be a boolean');
   const concurrentSet = new Set(concurrentActions);
   if (plugin !== undefined && (typeof plugin?.id !== 'string' || !plugin.id || (plugin.version !== undefined && typeof plugin.version !== 'string'))) throw new TypeError('plugin must be { id, version? }');
   if (onConfigurationChanged !== undefined && typeof onConfigurationChanged !== 'function') throw new TypeError('onConfigurationChanged must be a function');
@@ -691,8 +701,8 @@ export function start(createActions, {
   let stopped = false;
   let initialized = !validateInitialize;
   const framed = transport === 'framed';
-  const writeText = text => {
-    if (Buffer.byteLength(text) > maxResultBytes) throw new Error(oversizedMessage);
+  const writeText = (text, limit = maxResultBytes) => {
+    if (Buffer.byteLength(text) > limit) throw new Error(oversizedMessage);
     process.stdout.write(framed ? encodeFrame(FRAME_JSON, Buffer.from(text)) : text + '\n');
   };
   const send = message => writeText(JSON.stringify({ jsonrpc: '2.0', ...message }));
@@ -723,7 +733,11 @@ export function start(createActions, {
     const wait = Number.isSafeInteger(options?.timeoutMs) && options.timeoutMs > 0 ? options.timeoutMs : hostTimeoutMs;
     const timer = setTimeout(() => { pending.delete(id); reject(pluginError('HOST_TIMEOUT', errors.timeout ?? '宿主请求超时', { retryable: true })); }, wait);
     pending.set(id, { resolve, reject, timer });
-    try { send({ id, method, params }); }
+    try {
+      // A negotiated host.storage.set may carry a value above maxResultBytes.
+      const limit = largeStorageNegotiated && method === 'host.storage.set' ? Math.max(maxResultBytes, LARGE_STORAGE_MESSAGE_BYTES - 1) : maxResultBytes;
+      writeText(JSON.stringify({ jsonrpc: '2.0', id, method, params }), limit);
+    }
     catch (error) { clearTimeout(timer); pending.delete(id); reject(error); }
   });
   const adaptedHost = adaptHost(host);
@@ -759,6 +773,7 @@ export function start(createActions, {
   let tasksNegotiated = false;
   let taskEventsNegotiated = false;
   let configurationNegotiated = false;
+  let largeStorageNegotiated = false;
   // `initialized` is true up front without validateInitialize; events wait for the real handshake.
   let eventsReady = false;
     const tasks = new Map();
@@ -801,7 +816,7 @@ export function start(createActions, {
     if (stopped) return;
     let parsed;
     try {
-      if (Buffer.byteLength(line) > 1_048_576) { send(protocolError(null, -32600)); return; }
+      if (Buffer.byteLength(line) > (largeStorageNegotiated ? LARGE_STORAGE_MESSAGE_BYTES : MAX_JSON_FRAME_BYTES)) { send(protocolError(null, -32600)); return; }
       parsed = JSON.parse(line);
     } catch {
       try { send(protocolError(null, -32700)); } catch { process.stderr.write('Invalid plugin RPC request\n'); }
@@ -847,8 +862,9 @@ export function start(createActions, {
         tasksNegotiated = request.params?.features?.tasks === 1;
         taskEventsNegotiated = tasksNegotiated && taskEvents && request.params?.features?.taskEvents === 1;
         configurationNegotiated = Boolean(onConfigurationChanged) && request.params?.features?.configuration === 1;
+        largeStorageNegotiated = largeStorage && request.params?.features?.largeStorage === 1;
         eventsReady = true;
-        const features = { ...(tasksNegotiated ? { tasks: 1 } : {}), ...(taskEventsNegotiated ? { taskEvents: 1 } : {}), ...(configurationNegotiated ? { configuration: 1 } : {}) };
+        const features = { ...(tasksNegotiated ? { tasks: 1 } : {}), ...(taskEventsNegotiated ? { taskEvents: 1 } : {}), ...(configurationNegotiated ? { configuration: 1 } : {}), ...(largeStorageNegotiated ? { largeStorage: 1 } : {}) };
         send({ id: request.id, result: { ...extra, runtimeProtocolVersion: 1, ...(Object.keys(features).length ? { features } : {}), ...(plugin ? { plugin: { id: plugin.id, ...(plugin.version ? { version: plugin.version } : {}) } } : {}) } });
         if (subscribedEvents.length) {
           host('host.events.subscribe', { events: subscribedEvents })
@@ -1025,7 +1041,7 @@ export function start(createActions, {
     process.stdin.on('data', createFrameReader(onFrame, error => {
       process.stderr.write(`Invalid plugin frame: ${error.message}\n`);
       stop();
-    }));
+    }, { maxJsonBytes: () => largeStorageNegotiated ? LARGE_STORAGE_MESSAGE_BYTES : MAX_JSON_FRAME_BYTES }));
     process.stdin.on('end', stop);
   } else {
     input.on('line', handleMessage);

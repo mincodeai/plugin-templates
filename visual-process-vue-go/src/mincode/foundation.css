@@ -261,7 +261,9 @@
   --el-bg-color-overlay: var(--app-surface);
   --el-fill-color: var(--app-muted);
   --el-fill-color-blank: var(--app-surface);
-  --el-fill-color-light: var(--app-muted);
+  /* Hover and selected rows need a real surface shift: --app-muted is the card
+     surface (#fff in light themes), so reusing it made hovering invisible. */
+  --el-fill-color-light: var(--app-hover);
   --el-fill-color-lighter: color-mix(in srgb, var(--app-surface) 85%, var(--app-muted));
   --el-fill-color-dark: var(--app-hover);
   --el-border-color: var(--app-border-strong);
@@ -282,8 +284,10 @@
   --el-border-color-hover: color-mix(in srgb, var(--app-accent) 52%, var(--app-surface));
   --el-hover-color: var(--app-accent-soft);
   --el-box-shadow: none;
-  --el-box-shadow-light: none;
-  --el-box-shadow-lighter: none;
+  /* Ant-style overlays keep flat cards but still need to lift off the page:
+     poppers, dropdowns and selects all read this token. */
+  --el-box-shadow-light: 0 6px 16px rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%);
+  --el-box-shadow-lighter: 0 1px 2px rgb(0 0 0 / 6%);
   --el-box-shadow-dark: none;
 
   /* Element Plus must consume the same palette as custom workspaces and poppers. */

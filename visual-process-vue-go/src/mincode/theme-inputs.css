@@ -1,0 +1,251 @@
+/* Theme-aware fields use neutral resting borders and accent interaction edges. */
+:root {
+  --app-input-bg: var(--app-surface);
+  --app-input-bg-hover: var(--app-surface);
+  --app-input-bg-focus: var(--app-surface);
+  --app-input-bg-disabled: var(--app-hover);
+  --app-input-border: var(--app-border-strong);
+  --app-input-border-hover: var(--app-accent-hover);
+  --app-input-border-focus: var(--app-accent);
+  --app-input-placeholder: color-mix(in srgb, var(--app-text-muted) 68%, var(--app-surface));
+  --el-text-color-placeholder: var(--app-input-placeholder);
+}
+
+/* Typed and selected values are primary text; only placeholders stay muted. */
+.el-select {
+  --el-select-input-color: var(--app-text);
+  --el-select-multiple-input-color: var(--app-text);
+}
+
+.el-select__selected-item,
+.el-select__input {
+  color: var(--app-text) !important;
+}
+
+/* Form controls use physical borders rather than inset or focus shadows. */
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-input-number .el-input__wrapper {
+  border-radius: var(--app-control-radius);
+  box-sizing: border-box;
+  border: 1px solid var(--app-input-border) !important;
+  background: var(--app-input-bg) !important;
+  box-shadow: none !important;
+}
+
+/* The physical border above replaces Element's inset shadow, which cost no space.
+   Give those two pixels back to the inner field, or an input ends up 2px taller
+   than a select that shares the same --el-component-size. */
+.el-input {
+  --el-input-inner-height: calc(var(--el-input-height, var(--el-component-size)) - 4px);
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover,
+.el-textarea__inner:hover,
+.el-input-number:hover .el-input__wrapper {
+  border-color: var(--app-input-border-hover) !important;
+  background: var(--app-input-bg-hover) !important;
+  box-shadow: none !important;
+}
+
+.el-input.is-focus .el-input__wrapper,
+.el-input:focus-within .el-input__wrapper,
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus,
+.el-input-number:focus-within .el-input__wrapper,
+.devtools-editors textarea:focus {
+  border-color: var(--app-input-border-focus) !important;
+  background: var(--app-input-bg-focus) !important;
+  box-shadow: none !important;
+}
+
+.el-input.is-error .el-input__wrapper,
+.el-select.is-error .el-select__wrapper,
+.el-textarea.is-error .el-textarea__inner {
+  border-color: var(--app-danger) !important;
+  box-shadow: none !important;
+}
+
+.el-input-otp__input-field {
+  box-sizing: border-box;
+  border: 1px solid var(--app-input-border) !important;
+  box-shadow: none !important;
+}
+
+.el-input-otp__input-field:focus-within {
+  border-color: var(--app-input-border-focus) !important;
+  box-shadow: none !important;
+}
+
+.el-input__inner,
+.el-textarea__inner,
+.el-select__selected-item,
+.el-select__placeholder,
+.el-range-input,
+.el-cascader__search-input {
+  font-family: var(--app-font-sans);
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder,
+.el-select__placeholder:not(.el-select__selected-item),
+.el-range-input::placeholder,
+.el-cascader__search-input::placeholder {
+  color: var(--app-input-placeholder) !important;
+  font-weight: 400;
+  letter-spacing: normal;
+  opacity: 1;
+}
+
+.el-input.is-disabled .el-input__wrapper,
+.el-select.is-disabled .el-select__wrapper,
+.el-textarea.is-disabled .el-textarea__inner,
+.el-input-number.is-disabled .el-input__wrapper {
+  background: var(--app-input-bg-disabled) !important;
+  border: 1px solid var(--app-border) !important;
+  box-shadow: none !important;
+}
+
+/* Input groups stay visually connected while retaining a light field surface. */
+.el-input-group__append,
+.el-input-group__prepend {
+  border-color: var(--app-input-border);
+  background: color-mix(in srgb, var(--app-accent) 7%, var(--app-muted));
+  color: var(--app-text-regular);
+}
+
+/* DevTools editors intentionally retain a native textarea for raw request payloads. */
+.devtools-editors textarea {
+  border-color: var(--app-input-border) !important;
+  background: var(--app-input-bg) !important;
+  color: var(--app-text) !important;
+}
+
+.devtools-editors textarea:hover {
+  border-color: var(--app-input-border-hover) !important;
+  background: var(--app-input-bg-hover) !important;
+}
+
+.devtools-editors textarea::placeholder {
+  color: var(--app-input-placeholder);
+}
+
+/* Keep every visible native text field on the same light, theme-tinted surface.
+ * Code editors and terminal accessibility inputs are intentionally excluded: their
+ * rendering is owned by Monaco/xterm and changing them breaks editor contrast. */
+#app
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not(
+        [type="color"]
+      ):not([type="hidden"]),
+    textarea,
+    select
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+    .inputarea
+  ) {
+  border: 1px solid var(--app-input-border);
+  border-radius: var(--app-control-radius);
+  background: var(--app-input-bg);
+  color: var(--app-text);
+}
+
+#app
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not(
+        [type="color"]
+      ):not([type="hidden"]),
+    textarea,
+    select
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+    .inputarea
+  ):hover {
+  border-color: var(--app-input-border-hover);
+  background: var(--app-input-bg-hover);
+}
+
+#app
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not(
+        [type="color"]
+      ):not([type="hidden"]),
+    textarea,
+    select
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+    .inputarea
+  ):focus {
+  outline: 0;
+  border-color: var(--app-input-border-focus);
+  background: var(--app-input-bg-focus);
+  box-shadow: none;
+}
+
+#app
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not(
+        [type="color"]
+      ):not([type="hidden"]),
+    textarea,
+    select
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+    .inputarea
+  )::placeholder {
+  color: var(--app-input-placeholder);
+}
+
+#app
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not(
+        [type="color"]
+      ):not([type="hidden"]),
+    textarea,
+    select
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+    .inputarea
+  ):disabled {
+  border-color: var(--app-border);
+  background: var(--app-input-bg-disabled);
+  color: var(--app-text-muted);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* Workspace search stays denser than form inputs so it lines up with compact
+ * toolbars. Terminal find uses its own 20px treatment and is left untouched. */
+.sessions-search .el-input,
+.settings-ai-search-card .el-input,
+.settings-ai-search-line .el-input,
+.project-search-controls .el-input {
+  --el-component-size: 28px;
+}
+
+.sessions-search .el-input__wrapper,
+.settings-ai-search-card .el-input__wrapper,
+.settings-ai-search-line .el-input__wrapper,
+.project-search-controls .el-input__wrapper {
+  min-height: 28px !important;
+}
+
+.redis-key-toolbar .el-select__wrapper {
+  box-sizing: border-box;
+  min-height: 28px !important;
+  height: 28px;
+}
+
+
+/* Contextual sizing belongs to the workspace layout; the reusable components
+ * own the shared input and filter button chrome. */
+.db-query-input {
+  min-width: 0;
+  flex: 1;
+}
+
+.db-grid-filter {
+  width: 220px;
+  min-width: 160px;
+  flex: 0 1 220px;
+}

@@ -209,6 +209,11 @@ export interface StartOptions<H = HostCall> {
   adaptHost?: (host: HostCall) => H;
   maxResultBytes?: number;
   oversizedMessage?: string;
+  /**
+   * Opt in to features.largeStorage: when the host offers it, storage values up to
+   * 4 MiB can be read and written. Hosts without it keep messages within 1 MiB.
+   */
+  largeStorage?: boolean;
   cleanup?: boolean;
   hostTimeoutMs?: number;
   formatResult?: (result: unknown) => unknown;
@@ -270,7 +275,9 @@ export interface UIMessageContext<H = HostCall> extends PluginCallContext<H> {
 export type PluginMethod<H = HostCall> = (params: unknown, context: PluginCallContext<H>) => unknown;
 export declare const MAX_BINARY_BYTES: number;
 export declare function encodeBinaryFrame(channel: string, data: Uint8Array | ArrayBuffer): Buffer;
-export declare function createFrameReader(onFrame: (kind: number, payload: Buffer) => void, onError: (error: Error) => void): (chunk: Buffer) => void;
+export declare function createFrameReader(onFrame: (kind: number, payload: Buffer) => void, onError: (error: Error) => void, options?: { maxJsonBytes?: () => number }): (chunk: Buffer) => void;
+/** Message limit after features.largeStorage: a full 4 MiB storage value plus its envelope. */
+export declare const LARGE_STORAGE_MESSAGE_BYTES: number;
 export declare function start<H = HostCall>(createActions: (host: H) => Actions, options?: StartOptions<H>): { sendBinary: SendBinary; postUIMessage: PostUIMessage };
 
 export interface Association {

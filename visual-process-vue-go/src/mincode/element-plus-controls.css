@@ -1,0 +1,198 @@
+/* Component geometry and neutral selection surfaces are shared across workspaces. */
+:root {
+  --app-control-radius: 6px;
+  --el-border-radius-base: var(--app-control-radius);
+  --app-segmented-bg: var(--app-hover);
+  --app-segmented-selected-bg: var(--app-surface);
+  --app-segmented-selected-color: var(--app-text);
+}
+
+/* Shared compact controls consume the same tokens as the desktop shell. */
+.el-button {
+  --el-button-border-radius: var(--app-control-radius);
+  min-height: 30px;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+/* Keep keyboard focus visible without adding decorative elevation. */
+.el-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--app-accent) 72%, var(--app-surface));
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* Default-type buttons only. `el-button--default` is also Element Plus's default *size* class, which primary
+   and other typed buttons carry too, so matching it here painted their text dark. */
+.el-button:not(.el-button--primary, .el-button--success, .el-button--warning, .el-button--danger, .el-button--info, .is-text, .is-link, .is-plain, .is-disabled, :disabled) {
+  border-color: var(--app-border-strong);
+  background: var(--app-surface);
+  color: var(--app-text-regular);
+}
+
+.el-button:not(.el-button--primary, .el-button--success, .el-button--warning, .el-button--danger, .el-button--info, .is-text, .is-link, .is-plain, .is-disabled, :disabled):hover {
+  border-color: var(--app-accent-hover);
+  background: var(--app-surface);
+  color: var(--app-accent-hover);
+}
+
+.el-button--primary:not(.is-plain, .is-link, .is-text, .is-disabled, :disabled),
+.el-checkbox__input.is-checked .el-checkbox__inner,
+.el-radio__input.is-checked .el-radio__inner {
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+}
+
+.el-button--primary:not(.is-plain, .is-link, .is-text, .is-disabled, :disabled):hover {
+  border-color: var(--app-accent-hover);
+  background: var(--app-accent-hover);
+}
+
+.el-button--primary:not(.is-plain, .is-link, .is-text, .is-disabled, :disabled):active {
+  border-color: var(--el-color-primary-dark-2);
+  background: var(--el-color-primary-dark-2);
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-input-number {
+  border-radius: var(--app-control-radius);
+}
+
+.el-checkbox__inner,
+.el-radio__inner {
+  border-color: var(--app-border-strong);
+}
+
+/* The root context keeps lazy-loaded Element Plus defaults from repainting
+ * ordinary selection controls as solid primary actions. */
+:root .el-segmented {
+  --el-border-radius-base: var(--app-control-radius);
+  --el-segmented-bg-color: var(--app-segmented-bg);
+  --el-segmented-color: var(--app-text-regular);
+  --el-segmented-item-selected-bg-color: var(--app-segmented-selected-bg);
+  --el-segmented-item-selected-color: var(--app-segmented-selected-color);
+  --el-segmented-item-hover-bg-color: var(--app-hover);
+  --el-segmented-item-hover-color: var(--app-text);
+  --el-segmented-item-active-bg-color: var(--app-hover);
+  --el-segmented-item-selected-disabled-bg-color: var(--app-hover);
+  --app-segmented-selection-border: var(--app-border);
+}
+
+/* A physical border replaces the reference design's selected-item shadow. */
+.el-segmented__item-selected {
+  box-sizing: border-box;
+  border: 1px solid var(--app-segmented-selection-border);
+  box-shadow: none;
+}
+
+:root .el-segmented .el-segmented__item-selected.is-focus-visible::before {
+  outline-color: var(--app-accent);
+}
+
+.el-segmented .el-segmented__item.is-selected.is-disabled {
+  color: var(--el-segmented-item-disabled-color);
+}
+
+/* Outlined filters stay white; navigation alone uses the accent-soft fill. */
+.el-radio-group .el-radio-button {
+  --el-border-radius-base: var(--app-control-radius);
+  --el-radio-button-checked-bg-color: var(--app-surface);
+  --el-radio-button-checked-text-color: var(--app-accent);
+  --el-radio-button-checked-border-color: var(--app-accent);
+}
+
+/* Selected outlines must stay continuous without the library's one-pixel shadow. */
+.el-radio-group .el-radio-button.is-active .el-radio-button__original-radio:not(:disabled) + .el-radio-button__inner {
+  outline-color: var(--app-accent);
+  z-index: 1;
+  box-shadow: none;
+}
+
+.el-tag {
+  --el-tag-border-radius: var(--app-radius-sm);
+  font-weight: 400;
+}
+
+.el-tag.el-tag--plain:not(.is-hit) {
+  --el-tag-bg-color: color-mix(in srgb, var(--el-tag-text-color) 6%, var(--app-surface));
+  --el-tag-border-color: color-mix(in srgb, var(--el-tag-text-color) 24%, var(--app-surface));
+}
+
+.el-tag.el-tag--info:not(.el-tag--dark, .is-hit) {
+  --el-tag-bg-color: var(--app-hover);
+  --el-tag-border-color: var(--app-border-strong);
+  --el-tag-text-color: var(--app-text-regular);
+}
+
+.el-card,
+.el-popover.el-popper,
+.el-dropdown__popper .el-dropdown-menu,
+.el-select__popper.el-popper,
+.el-picker__popper.el-popper {
+  border-color: var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: none;
+}
+
+.el-dialog {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: none;
+}
+
+.el-dialog__header {
+  border-bottom-color: var(--app-border);
+}
+
+/* Element Plus leaves a 32px gap under drawer titles; a divider separates them instead. */
+.el-drawer__header {
+  margin-bottom: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.el-drawer__body {
+  padding-top: 16px;
+}
+
+.el-table {
+  --el-table-border-color: var(--app-border);
+  --el-table-header-bg-color: var(--app-hover);
+  --el-table-row-hover-bg-color: var(--app-hover);
+  --el-table-current-row-bg-color: var(--app-accent-soft);
+  color: var(--app-text-regular);
+}
+
+.el-table th.el-table__cell {
+  color: var(--app-text-regular);
+  font-weight: 600;
+}
+
+.el-tabs__item {
+  color: var(--app-text-muted);
+}
+
+.el-tabs__item.is-active,
+.el-tabs__item:hover {
+  color: var(--app-accent);
+}
+
+.el-tabs__active-bar {
+  height: 2px;
+  border-radius: 2px;
+  background: var(--app-accent);
+}
+
+.el-menu-item.is-active {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
+.el-message-box,
+.el-notification,
+.el-message {
+  border-color: var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: none;
+}

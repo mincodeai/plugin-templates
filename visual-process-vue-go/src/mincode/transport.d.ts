@@ -91,6 +91,17 @@ export interface Transport {
    * No risk confirmation and never offered to AI: keep writes and dangerous operations in actions.
    */
   request<T = unknown>(method: string, params?: unknown): Promise<T>;
+  /** Whether the host supports free-form messages (features.messages). */
+  messagesSupported(): boolean;
+  /**
+   * Posts a free-form JSON value to this plugin's process, like VS Code's webview postMessage
+   * (SDK `onUIMessage`). Messages arrive in order; resolves once the process accepted it.
+   * At most 256 KiB; no risk confirmation and never offered to AI, so keep writes and dangerous
+   * operations in actions.
+   */
+  postMessage(message: unknown): Promise<void>;
+  /** Receives messages the plugin process posted (SDK `postUIMessage`) in order; returns an unsubscribe function. */
+  onMessage(listener: (message: unknown) => void): () => void;
   /** Binary frames to and from the plugin process; needs plugin.json runtime.transport "framed". */
   binary: {
     supported(): boolean;
