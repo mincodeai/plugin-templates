@@ -5,7 +5,7 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
   const fragment = new URLSearchParams(location.hash.slice(1));
   const session = { sessionId: fragment.get('mincodeSession') ?? '', nonce: fragment.get('nonce') ?? '', generation: Number(fragment.get('generation')) };
   const requestTimeoutGraceMs = 5000, legacyRequestTimeoutMs = 40000, aiConfigApplyTimeoutMs = 10 * 60000;
-  let port, sequence = 0, requestTimeoutMs = legacyRequestTimeoutMs, callsSupported = false, messagesSupported = false, binarySupported = false, tasksSupported = false, taskEventsSupported = false, clipboardWriteSupported = false, trustedConfirmSupported = false, aiConfigSupported = false, configurationSupported = false, documentSupported = false, documentInfo = null, documentSaveHandler = null, openRequestSupported = false, openRequestHandler = null, openRequestSubscribed = false, floatingSupported = false, floatingClickHandler = null, floatingClickToken = '', visibilitySupported = false, pageVisible = true, connected = false, prefetchSupported = false, prefetchAction = '', prefetchOutcome = null, prefetchConsumed = false, closed = false, locale = 'zh';
+  let port, sequence = 0, requestTimeoutMs = legacyRequestTimeoutMs, callsSupported = false, messagesSupported = false, binarySupported = false, tasksSupported = false, taskEventsSupported = false, clipboardWriteSupported = false, trustedConfirmSupported = false, aiConfigLevel = 0, configurationSupported = false, documentSupported = false, documentInfo = null, documentSaveHandler = null, openRequestSupported = false, openRequestHandler = null, openRequestSubscribed = false, floatingSupported = false, floatingClickHandler = null, floatingClickToken = '', visibilitySupported = false, pageVisible = true, connected = false, prefetchSupported = false, prefetchAction = '', prefetchOutcome = null, prefetchConsumed = false, closed = false, locale = 'zh';
   const pending = new Map();
   const binaryListeners = new Set();
   const messageListeners = new Set();
@@ -207,8 +207,10 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     taskEventsSupported = tasksSupported && message.features?.taskEvents === 1;
     clipboardWriteSupported = message.features?.clipboardWrite === 1;
     trustedConfirmSupported = message.features?.trustedConfirm === 1;
-    // features.aiConfig: only for plugins that declared the ai.config capability.
-    aiConfigSupported = message.features?.aiConfig === 1;
+    // features.aiConfig: only for plugins that declared the ai.config capability. A level, not a flag:
+    // 1 preview/apply, 2 adds connector prompts, auth and login. Pages ship their transport, so they
+    // check level() for what the host can do instead of which functions exist.
+    aiConfigLevel = Number.isSafeInteger(message.features?.aiConfig) && message.features.aiConfig > 0 ? message.features.aiConfig : 0;
     configurationSupported = message.features?.configuration === 1;
     documentSupported = message.features?.document === 1 && validDocument(message.document);
     documentInfo = documentSupported ? message.document : null;
@@ -489,17 +491,33 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     // ai.config: propose AI settings. The host compares them with the saved settings (preview, no key
     // values come back) and writes the picked ones only after its own confirmation (apply).
     aiConfig: {
-      supported() { return aiConfigSupported; },
+      supported() { return aiConfigLevel >= 1; },
+      level() { return aiConfigLevel; },
       preview(items) {
-        if (!aiConfigSupported) return Promise.reject(Object.assign(new Error(message('宿主不支持提交 AI 设置', 'Host does not accept AI settings')), { code: 'not-allowed' }));
+        if (aiConfigLevel < 1) return Promise.reject(Object.assign(new Error(message('宿主不支持提交 AI 设置', 'Host does not accept AI settings')), { code: 'not-allowed' }));
         if (!Array.isArray(items)) return Promise.reject(Object.assign(new Error(message('AI 设置请求无效', 'Invalid AI settings request')), { code: 'invalid-request' }));
         return request({ type: 'mincode.plugin.ai-config.preview', items: jsonCopy(items) });
       },
       apply(items, choices) {
-        if (!aiConfigSupported) return Promise.reject(Object.assign(new Error(message('宿主不支持提交 AI 设置', 'Host does not accept AI settings')), { code: 'not-allowed' }));
+        if (aiConfigLevel < 1) return Promise.reject(Object.assign(new Error(message('宿主不支持提交 AI 设置', 'Host does not accept AI settings')), { code: 'not-allowed' }));
         if (!Array.isArray(items) || !Array.isArray(choices)) return Promise.reject(Object.assign(new Error(message('AI 设置请求无效', 'Invalid AI settings request')), { code: 'invalid-request' }));
         // Waits for the user in the host confirmation, so it gets far longer than a normal request.
         return request({ type: 'mincode.plugin.ai-config.apply', items: jsonCopy(items), choices: jsonCopy(choices) }, aiConfigApplyTimeoutMs);
+      },
+      // Level 2: the host signs in to a connector this plugin installed (by its item sourceId) and shows the
+      // sign-in itself. Resolves { status: 'signed-in' | 'cancelled' | 'failed', reason? }; never a token.
+      login(sourceId) {
+        if (aiConfigLevel < 2) return Promise.reject(Object.assign(new Error(message('宿主不支持连接器登录', 'Host does not support connector sign-in')), { code: 'not-allowed' }));
+        if (typeof sourceId !== 'string' || !sourceId.trim()) return Promise.reject(Object.assign(new Error(message('AI 设置请求无效', 'Invalid AI settings request')), { code: 'invalid-request' }));
+        // The user signs in in the browser meanwhile; the host bounds the whole sign-in to 5 minutes.
+        return request({ type: 'mincode.plugin.ai-config.login', kind: 'mcp', sourceId }, aiConfigApplyTimeoutMs);
+      },
+      // Level 2, read-only: the sign-in status of the connectors this plugin installed, by item sourceId (1-200).
+      // Resolves { statuses: { [sourceId]: 'signed-in' | 'signed-out' | 'needs-login' | 'not-installed' } }.
+      authStatus(sourceIds) {
+        if (aiConfigLevel < 2) return Promise.reject(Object.assign(new Error(message('宿主不支持查询连接器登录状态', 'Host does not report connector sign-in status')), { code: 'not-allowed' }));
+        if (!Array.isArray(sourceIds) || sourceIds.length === 0 || sourceIds.some(sourceId => typeof sourceId !== 'string' || !sourceId.trim())) return Promise.reject(Object.assign(new Error(message('AI 设置请求无效', 'Invalid AI settings request')), { code: 'invalid-request' }));
+        return request({ type: 'mincode.plugin.ai-config.auth-status', sourceIds: [...sourceIds] });
       },
     },
     // contributes.configuration: read the plugin's non-secret settings (secret

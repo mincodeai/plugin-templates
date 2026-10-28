@@ -112,6 +112,18 @@ export interface AiConfigChoice {
   action: 'add' | 'overwrite';
 }
 
+/**
+ * ai.config login: only the outcome, never a token. `reason` (failed only) is a short code such as
+ * "not-installed", "unsupported", "network", "timeout", "denied" or "failed".
+ */
+export interface AiConfigLoginResult {
+  status: 'signed-in' | 'cancelled' | 'failed';
+  reason?: string;
+}
+
+/** ai.config auth-status: one word per asked sourceId; "not-installed" when this plugin has no connector for it. */
+export type AiConfigAuthStatus = 'signed-in' | 'signed-out' | 'needs-login' | 'not-installed';
+
 export interface AiConfigApplyResult {
   added: number;
   overwritten: number;
@@ -254,7 +266,13 @@ export interface Transport {
    * Methods reject with code "not-allowed" when supported() is false.
    */
   aiConfig: {
+    /** level() >= 1. */
     supported(): boolean;
+    /**
+     * What the host offers: 0 none, 1 preview/apply, 2 also connector prompts, auth, login and authStatus. The transport is
+     * bundled into the page, so check this rather than whether a method exists.
+     */
+    level(): number;
     /** Compares the items with the saved settings; entries never contain API keys or env/header values. */
     preview(items: AiConfigItem[]): Promise<{ entries: AiConfigPreviewEntry[] }>;
     /**
@@ -264,6 +282,19 @@ export interface Transport {
      * changed after the dialog was shown ("changed-since-review").
      */
     apply(items: AiConfigItem[], choices: AiConfigChoice[]): Promise<AiConfigApplyResult>;
+    /**
+     * Level 2: the host signs in to the connector this plugin installed for `sourceId` (browser or device flow,
+     * shown in a host dialog). Rejects with "not-allowed" below level 2, "busy" while another apply or login of
+     * this plugin is open; a connector not installed by this plugin resolves as failed with "not-installed".
+     */
+    login(sourceId: string): Promise<AiConfigLoginResult>;
+    /**
+     * Level 2, read-only: the sign-in status of the connectors this plugin installed, for 1-200 distinct item
+     * sourceIds in one request. Connectors of other plugins or added by hand are "not-installed"; a connector
+     * without the host sign-in is "signed-out" unless it is signed in. Never a token, address or error text.
+     * Rejects with "not-allowed" below level 2.
+     */
+    authStatus(sourceIds: string[]): Promise<{ statuses: Record<string, AiConfigAuthStatus> }>;
   };
   configuration: {
     /** Non-secret settings only; secret settings stay with the plugin process. */
