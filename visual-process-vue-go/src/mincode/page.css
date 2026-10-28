@@ -24,6 +24,13 @@ body { background: var(--app-surface); font-size: var(--app-ui-font-size); line-
    and table cells are not gap containers, so buttons placed directly in them get their spacing back here. */
 :is(.el-dialog__footer, .el-drawer__footer, .el-message-box__btns) > .el-button.el-button + .el-button.el-button { margin-left: 12px; }
 .el-table .cell > .el-button.el-button + .el-button.el-button { margin-left: 8px; }
+/* Dialogs never outgrow the iframe: the box keeps Element's top margin and width, stops 16px above the
+   bottom edge, and only the body scrolls so the title and footer buttons stay in view. */
+.el-dialog:not(.is-fullscreen) { display: flex; flex-direction: column; max-height: calc(100vh - var(--el-dialog-margin-top, 15vh) - 16px); }
+.el-dialog:not(.is-fullscreen, .is-align-center) { margin-bottom: 16px; }
+.el-dialog.is-align-center:not(.is-fullscreen) { max-height: calc(100vh - 32px); }
+.el-dialog:not(.is-fullscreen) > :is(.el-dialog__header, .el-dialog__footer) { flex: none; }
+.el-dialog:not(.is-fullscreen) > .el-dialog__body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
 /* Inside the padded standard page the bar stretches full width like a native toolbar. */
 .official-plugin-page > .plugin-page-header { margin: -16px -16px 16px; padding-right: 16px; padding-left: 16px; }
 .plugin-heading h1 { margin: 0; font-size: 18px; line-height: 1.5; font-weight: 600; letter-spacing: -.3px; }

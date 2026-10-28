@@ -553,6 +553,205 @@ export function createEventsAPI(host) {
   };
 }
 
+// Services (host.services.*, see the Go SDK host/services.go). Callers need
+// the `plugins` capability; providers need nothing extra. invoke() waits for
+// the result; start() + wait() report progress, cancel() stops a call (not
+// rollback). Inputs: text (a string), or file sources [{ source: 'workspace'
+// | 'storage', path } | { source: 'upload', token }]. File outputs are
+// tokens: files.read / files.save (into the caller's storage) / files.release.
+// A provider's action receives the envelope decodeServiceRequest() reads; it
+// reads inputs with files.read, writes outputs with files.create(callId, ...)
+// and returns { text } | { json } | { files: [token] } | {}. With tasks
+// negotiated it reports progress with reportProgress({ completed?, total?, message? }).
+const SERVICE_CHUNK_BYTES = 512 * 1024;
+const SERVICE_FILE_MAX_BYTES = 64 * 1024 * 1024;
+const SERVICE_PROMPT_TIMEOUT_MS = 25_000;
+const SERVICE_EXEC_TIMEOUT_MS = 300_000;
+const SERVICE_REPLY_MARGIN_MS = 5_000;
+const SERVICE_SAVE_TIMEOUT_MS = 60_000;
+
+function serviceCallParams(call) {
+  if (!call || typeof call !== 'object' || typeof call.service !== 'string' || !call.service) throw pluginError('INVALID_ARGUMENT', 'A service call requires a service');
+  const { service, provider, input, params, timeoutMs, execTimeoutMs } = call;
+  if (input !== undefined && typeof input !== 'string' && !(Array.isArray(input) && input.length > 0)) throw pluginError('INVALID_ARGUMENT', 'Service input must be text or a non-empty list of file sources');
+  if (provider !== undefined && (typeof provider?.pluginId !== 'string' || !provider.pluginId)) throw pluginError('INVALID_ARGUMENT', 'provider must be { pluginId, entryId? }');
+  if (params !== undefined && (!params || typeof params !== 'object' || Array.isArray(params))) throw pluginError('INVALID_ARGUMENT', 'Service params must be an object');
+  for (const [name, value] of [['timeoutMs', timeoutMs], ['execTimeoutMs', execTimeoutMs]]) {
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < 1 || value > SERVICE_EXEC_TIMEOUT_MS)) throw pluginError('INVALID_ARGUMENT', `${name} must be 1–300000`);
+  }
+  return {
+    params: { service, ...(provider === undefined ? {} : { provider }), ...(input === undefined ? {} : { input }), ...(params === undefined ? {} : { params }), ...(timeoutMs === undefined ? {} : { timeoutMs }) },
+    promptMs: timeoutMs ?? SERVICE_PROMPT_TIMEOUT_MS,
+    execMs: execTimeoutMs ?? SERVICE_EXEC_TIMEOUT_MS,
+  };
+}
+
+function validServiceId(value, what) {
+  if (typeof value !== 'string' || !value) throw pluginError('INVALID_ARGUMENT', `Service ${what} is required`);
+  return value;
+}
+
+// The service error code of a failure: the host's data.code ('not_found',
+// 'too_large', 'busy', 'timeout', 'cancelled', ...) or '' when there is none.
+export function serviceErrorCode(error) {
+  const code = error?.data?.code;
+  return typeof code === 'string' ? code : '';
+}
+
+function serviceCallFailure(snapshot) {
+  let code = 'cancelled';
+  let message = 'The service call was cancelled';
+  if (snapshot.state === 'failed') {
+    message = typeof snapshot.error === 'string' && snapshot.error ? snapshot.error : 'The service call failed';
+    const prefix = message.split(':', 1)[0];
+    code = message.includes(':') && prefix && !/\s/.test(prefix) ? prefix : 'plugin_error';
+  }
+  return pluginError(code === 'cancelled' ? 'CANCELLED' : 'SERVICE_FAILED', message, {
+    data: { code, state: snapshot.state, callId: snapshot.callId, unconfirmed: snapshot.unconfirmed === true },
+  });
+}
+
+const serviceDelay = (ms, signal) => new Promise((resolve, reject) => {
+  if (signal?.aborted) { reject(signal.reason); return; }
+  const onAbort = () => { clearTimeout(timer); reject(signal.reason); };
+  const timer = setTimeout(() => { signal?.removeEventListener('abort', onAbort); resolve(); }, ms);
+  signal?.addEventListener('abort', onAbort, { once: true });
+});
+
+export function createServicesAPI(host, { maxChunkBytes = SERVICE_CHUNK_BYTES, maxFileBytes = SERVICE_FILE_MAX_BYTES, pollIntervalsMs = [250, 500, 1000] } = {}) {
+  if (!Number.isSafeInteger(maxChunkBytes) || maxChunkBytes < 1 || maxChunkBytes > SERVICE_CHUNK_BYTES) throw new TypeError('maxChunkBytes must be 1–524288');
+  if (!Number.isSafeInteger(maxFileBytes) || maxFileBytes < 1 || maxFileBytes > SERVICE_FILE_MAX_BYTES) throw new TypeError('maxFileBytes must be 1–67108864');
+  if (!Array.isArray(pollIntervalsMs) || pollIntervalsMs.length === 0 || pollIntervalsMs.some(ms => !Number.isSafeInteger(ms) || ms < 1)) throw new TypeError('pollIntervalsMs must be a list of positive integers');
+
+  // Checked before a session opens: bad or oversized data never reaches the host.
+  const toBytes = value => {
+    let bytes;
+    try { bytes = bytesFromFileInput(value); }
+    catch (cause) { throw pluginError('INVALID_ARGUMENT', 'Service file data must be a string, Uint8Array, or ArrayBuffer', { cause }); }
+    if (bytes.length > maxFileBytes) throw pluginError('PAYLOAD_TOO_LARGE', 'Service file exceeds the SDK limit');
+    return bytes;
+  };
+  const writeChunks = async (method, session, hostChunk, bytes) => {
+    const chunkBytes = Number.isSafeInteger(hostChunk) && hostChunk > 0 ? Math.min(hostChunk, maxChunkBytes) : maxChunkBytes;
+    for (let start = 0; start < bytes.length; start += chunkBytes) {
+      await host(method, { session, offset: start, data: bytes.subarray(start, Math.min(start + chunkBytes, bytes.length)).toString('base64') });
+    }
+  };
+  const beginSession = async (method, params) => {
+    const begin = await host(method, params);
+    if (!begin || typeof begin.session !== 'string' || !begin.session) throw pluginError('INVALID_HOST_RESULT', 'Host returned an invalid service file session');
+    return begin;
+  };
+  const committedToken = file => {
+    if (!file || typeof file.token !== 'string' || !file.token) throw pluginError('INVALID_HOST_RESULT', 'Host returned an invalid service file');
+    return file.token;
+  };
+  const status = async callId => {
+    const snapshot = await host('host.services.status', { callId: validServiceId(callId, 'call id') });
+    if (!snapshot || typeof snapshot.state !== 'string') throw pluginError('INVALID_HOST_RESULT', 'Host returned an invalid service call snapshot');
+    return snapshot;
+  };
+
+  return {
+    async list(service) {
+      const result = await host('host.services.list', service === undefined ? {} : { service: validServiceId(service, 'name') });
+      if (!Array.isArray(result?.services)) throw pluginError('INVALID_HOST_RESULT', 'Host returned an invalid service list');
+      return result.services;
+    },
+    // Waits for the prompts (timeoutMs, default 25 s), the provider's run
+    // (execTimeoutMs, SDK-only, default the 300 s maximum) and a 5 s margin.
+    invoke(call) {
+      const { params, promptMs, execMs } = serviceCallParams(call);
+      return host('host.services.invoke', params, { timeoutMs: promptMs + execMs + SERVICE_REPLY_MARGIN_MS });
+    },
+    // Resolves with { callId, provider } once the prompts are done.
+    start(call) {
+      const { params, promptMs } = serviceCallParams(call);
+      return host('host.services.start', params, { timeoutMs: promptMs + SERVICE_REPLY_MARGIN_MS });
+    },
+    status,
+    cancel: callId => host('host.services.cancel', { callId: validServiceId(callId, 'call id') }),
+    // Polls after 250 ms, 500 ms, then every second; onProgress gets each
+    // changed progress ({ completed?, total?, message?, raw? }). A failed or
+    // cancelled call rejects with a PluginError whose data holds { code,
+    // state, callId, unconfirmed }. Aborting `signal` stops the wait, not the call.
+    async wait(callId, { onProgress, signal } = {}) {
+      validServiceId(callId, 'call id');
+      let last;
+      for (let attempt = 0; ; attempt++) {
+        await serviceDelay(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)], signal);
+        const snapshot = await status(callId);
+        if (onProgress && snapshot.progress && typeof snapshot.progress === 'object') {
+          const progress = { ...snapshot.progress, ...(snapshot.rawProgress === undefined ? {} : { raw: snapshot.rawProgress }) };
+          const key = JSON.stringify(progress);
+          if (key !== last) { last = key; onProgress(progress); }
+        }
+        if (snapshot.state === 'succeeded') return { provider: snapshot.provider, output: snapshot.output ?? null };
+        if (snapshot.state === 'failed' || snapshot.state === 'cancelled') throw serviceCallFailure(snapshot);
+        if (snapshot.state !== 'running') throw pluginError('INVALID_HOST_RESULT', 'Host returned an unknown service call state');
+      }
+    },
+    files: {
+      // Uploads data (≤ 64 MiB) for an { source: 'upload', token } input.
+      async upload(name, value) {
+        validServiceId(name, 'file name');
+        const bytes = toBytes(value);
+        const begin = await beginSession('host.services.file.upload.begin', {});
+        await writeChunks('host.services.file.upload.append', begin.session, begin.maxChunkBytes, bytes);
+        return committedToken(await host('host.services.file.upload.commit', { session: begin.session, name }));
+      },
+      // Reads a whole file (an input for a provider, an output for a caller).
+      async read(token, { maxBytes = maxFileBytes } = {}) {
+        validServiceId(token, 'file token');
+        if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || maxBytes > maxFileBytes) throw pluginError('INVALID_ARGUMENT', 'maxBytes exceeds the SDK limit');
+        const chunks = [];
+        let offset = 0;
+        for (;;) {
+          const frame = await host('host.services.file.read', { token, offset, length: maxChunkBytes });
+          if (typeof frame?.data !== 'string' || frame.data.length > Math.ceil(maxChunkBytes / 3) * 4) throw pluginError('INVALID_HOST_RESULT', 'Host returned an invalid service file chunk');
+          const bytes = Buffer.from(frame.data, 'base64');
+          if (offset + bytes.length > maxBytes) throw pluginError('RESULT_TOO_LARGE', 'Service file exceeds the SDK limit');
+          chunks.push(bytes);
+          offset += bytes.length;
+          // The host returns full chunks until the end of the file.
+          if (bytes.length < maxChunkBytes) return Buffer.concat(chunks, offset);
+        }
+      },
+      // Copies an output into the caller's file storage (capability `storage`).
+      save(token, path) {
+        return host('host.services.file.save', { token: validServiceId(token, 'file token'), path: validateStorageFilePath(path) }, { timeoutMs: SERVICE_SAVE_TIMEOUT_MS });
+      },
+      release: token => host('host.services.file.release', { token: validServiceId(token, 'file token') }),
+      // Provider side: writes an output file of the running call callId.
+      async create(callId, name, value) {
+        validServiceId(callId, 'call id');
+        validServiceId(name, 'file name');
+        const bytes = toBytes(value);
+        const begin = await beginSession('host.services.file.create.begin', { callId, name });
+        await writeChunks('host.services.file.create.append', begin.session, begin.maxChunkBytes, bytes);
+        return committedToken(await host('host.services.file.create.commit', { session: begin.session }));
+      },
+    },
+  };
+}
+
+// Reads the payload a provider's action receives: { callId, service, entry,
+// text?, files?, params, caller }.
+export function decodeServiceRequest(payload) {
+  const invalid = () => pluginError('INVALID_ARGUMENT', 'Invalid service request');
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw invalid();
+  const { callId, service, entry, input, params, caller } = payload;
+  if (![callId, service, entry].every(value => typeof value === 'string' && value)) throw invalid();
+  if (input !== undefined && input !== null && typeof input !== 'string' && !Array.isArray(input)) throw invalid();
+  return {
+    callId, service, entry,
+    text: typeof input === 'string' ? input : undefined,
+    files: Array.isArray(input) ? input : undefined,
+    params: params && typeof params === 'object' && !Array.isArray(params) ? params : {},
+    caller: caller && typeof caller === 'object' ? caller : {},
+  };
+}
+
 // Framed transport (plugin.json runtime.transport "framed"): every message is
 // kind:u8 | length:u32 big-endian | payload. Kind 0 is a UTF-8 JSON-RPC message;
 // kind 1 is channelLength:u16 big-endian | channel | bytes.
@@ -609,7 +808,7 @@ export function createFrameReader(onFrame, onError, { maxJsonBytes = () => MAX_J
   };
 }
 
-// Manifest API v1/v2, runtime protocol v1. stdout is reserved for JSON-RPC.
+// Manifest API v2, runtime protocol v1. stdout is reserved for JSON-RPC.
 export function start(createActions, {
   adaptHost = host => host,
   maxResultBytes = 900_000,

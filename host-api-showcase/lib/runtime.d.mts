@@ -196,6 +196,79 @@ export declare function createWorkspaceAPI(host: HostCall, options?: { maxFileBy
 
 export declare function createEventsAPI(host: HostCall): { subscribe(events: HostEvent[]): Promise<{ events: HostEvent[] }> };
 
+// ---- services (host.services.*; callers need capability `plugins`) ----
+
+export interface ServiceShape { kind: 'none' | 'text' | 'json' | 'file' | 'files'; accepts?: string[]; maxBytes?: number; maxFiles?: number; mime?: string }
+export interface ServiceProviderInfo {
+  pluginId: string; pluginName: string; entryId: string; title: string; titleLocalized?: Record<string, string>; description?: string;
+  input: ServiceShape; output: ServiceShape; params?: Record<string, unknown>; risk: string; isDefault: boolean;
+}
+export interface ServiceInfo { service: string; providers: ServiceProviderInfo[] }
+export interface ServiceProviderRef { pluginId: string; entryId?: string }
+/** An input file: workspace (needs workspace.read), the caller's own file storage, or an upload token. */
+export type ServiceFileSource = { source: 'workspace' | 'storage'; path: string } | { source: 'upload'; token: string };
+/** A service file handle (never a path). */
+export interface ServiceFile { token: string; name: string; mime: string; size: number }
+export interface ServiceCall {
+  service: string;
+  /** Optional: name a provider; otherwise the user's default, or the user picks. */
+  provider?: ServiceProviderRef;
+  /** Text for a text service, file sources for a file service, omitted for none. */
+  input?: string | ServiceFileSource[];
+  params?: Record<string, unknown>;
+  /** How long the approval / provider prompts may wait (5000–300000, default 25000). */
+  timeoutMs?: number;
+  /** SDK-only: how long invoke waits for the provider's run (default 300000, the longest any entry may run). */
+  execTimeoutMs?: number;
+}
+/** output: the text of a text service, the value of a json service, ServiceFile[] of a file service, or null. */
+export interface ServiceResult<T = unknown> { provider: { pluginId: string; entryId: string }; output: T }
+export interface ServiceProgress { completed?: number; total?: number; message?: string; /** The provider's progress as reported (≤ 4 KiB). */ raw?: unknown }
+export interface ServiceSnapshot {
+  callId: string; state: 'running' | 'succeeded' | 'failed' | 'cancelled'; provider: { pluginId: string; entryId: string };
+  progress?: Omit<ServiceProgress, 'raw'>; rawProgress?: unknown; output?: unknown; error?: string; unconfirmed?: boolean;
+}
+export interface ServiceFilesAPI {
+  /** Uploads data (≤ 64 MiB, 512 KiB chunks) for a { source: 'upload', token } input; resolves with the token. */
+  upload(name: string, value: FileInput): Promise<string>;
+  /** Reads a whole service file (a provider's input or a caller's output). */
+  read(token: string, options?: { maxBytes?: number }): Promise<Buffer>;
+  /** Copies an output into the caller's file storage (capability `storage`). */
+  save(token: string, path: string): Promise<{ path: string; size: number }>;
+  release(token: string): Promise<unknown>;
+  /** Provider side: writes an output file of the running call; resolves with its token for { files: [token] }. */
+  create(callId: string, name: string, value: FileInput): Promise<string>;
+}
+export interface ServicesAPI {
+  list(service?: string): Promise<ServiceInfo[]>;
+  /** Waits for the result; the host-call timeout covers timeoutMs + execTimeoutMs + 5 s. */
+  invoke<T = unknown>(call: ServiceCall): Promise<ServiceResult<T>>;
+  /** Resolves once the prompts are done and the call runs. */
+  start(call: ServiceCall): Promise<{ callId: string; provider: { pluginId: string; entryId: string } }>;
+  status(callId: string): Promise<ServiceSnapshot>;
+  /** Cancelling is not rollback; an unconfirmed outcome ends as failed with unconfirmed: true. */
+  cancel(callId: string): Promise<ServiceSnapshot>;
+  /**
+   * Polls after 250 ms, 500 ms, then every second until the call ends. A failed or cancelled call rejects with a
+   * PluginError whose data is { code, state, callId, unconfirmed }. Aborting signal stops the wait, not the call.
+   */
+  wait<T = unknown>(callId: string, options?: { onProgress?: (progress: ServiceProgress) => void; signal?: AbortSignal }): Promise<ServiceResult<T>>;
+  files: ServiceFilesAPI;
+}
+export declare function createServicesAPI(host: HostCall, options?: { maxChunkBytes?: number; maxFileBytes?: number; pollIntervalsMs?: number[] }): ServicesAPI;
+/** The service error code of a failure ('not_found', 'too_large', 'busy', 'timeout', 'cancelled', ...) or ''. */
+export declare function serviceErrorCode(error: unknown): string;
+
+/** The payload a provider's action receives. Return { text } | { json } | { files: [token] } | {}. */
+export interface ServiceRequest {
+  callId: string; service: string; entry: string;
+  text?: string;
+  files?: ServiceFile[];
+  params: Record<string, unknown>;
+  caller: { kind: 'plugin'; pluginId: string } | { kind: 'host'; surface: string };
+}
+export declare function decodeServiceRequest(payload: unknown): ServiceRequest;
+
 // ---- runtime ----
 
 export interface TaskContext {

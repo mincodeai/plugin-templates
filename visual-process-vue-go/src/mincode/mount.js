@@ -12,7 +12,9 @@ import './compact-density.css';
 import './theme-inputs.css';
 import './page.css';
 import './scrollbar.css';
+import { installSandboxForms } from './sandbox-forms.js';
 export function mountPlugin(Page, config, options = {}) {
+  installSandboxForms();
   const renderPage = () => h(Page, { config });
   createApp({
     render: options.pageScrollbar === false

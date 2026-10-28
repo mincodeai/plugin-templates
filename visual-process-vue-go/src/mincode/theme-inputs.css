@@ -137,7 +137,10 @@
 
 /* Keep every visible native text field on the same light, theme-tinted surface.
  * Code editors and terminal accessibility inputs are intentionally excluded: their
- * rendering is owned by Monaco/xterm and changing them breaks editor contrast. */
+ * rendering is owned by Monaco/xterm and changing them breaks editor contrast.
+ * Element Plus inner inputs are excluded too: their wrapper draws the border, and
+ * the #app id here would otherwise outrank Element's own `border: none` (a date
+ * range picker would show a box around each of its two inputs). */
 #app
   :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not(
@@ -145,7 +148,9 @@
       ):not([type="hidden"]),
     textarea,
     select
-  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.el-range-input):not(.el-input-tag__input):not(
+    .el-input-otp__input-field
+  ):not(.xterm-helper-textarea):not(
     .inputarea
   ) {
   border: 1px solid var(--app-input-border);
@@ -161,7 +166,9 @@
       ):not([type="hidden"]),
     textarea,
     select
-  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.el-range-input):not(.el-input-tag__input):not(
+    .el-input-otp__input-field
+  ):not(.xterm-helper-textarea):not(
     .inputarea
   ):hover {
   border-color: var(--app-input-border-hover);
@@ -175,7 +182,9 @@
       ):not([type="hidden"]),
     textarea,
     select
-  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.el-range-input):not(.el-input-tag__input):not(
+    .el-input-otp__input-field
+  ):not(.xterm-helper-textarea):not(
     .inputarea
   ):focus {
   outline: 0;
@@ -191,7 +200,9 @@
       ):not([type="hidden"]),
     textarea,
     select
-  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.el-range-input):not(.el-input-tag__input):not(
+    .el-input-otp__input-field
+  ):not(.xterm-helper-textarea):not(
     .inputarea
   )::placeholder {
   color: var(--app-input-placeholder);
@@ -204,7 +215,9 @@
       ):not([type="hidden"]),
     textarea,
     select
-  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.xterm-helper-textarea):not(
+  ):not(.el-input__inner):not(.el-select__input):not(.el-textarea__inner):not(.el-range-input):not(.el-input-tag__input):not(
+    .el-input-otp__input-field
+  ):not(.xterm-helper-textarea):not(
     .inputarea
   ):disabled {
   border-color: var(--app-border);

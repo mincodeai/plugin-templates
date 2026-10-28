@@ -43,7 +43,7 @@ pnpm verify
 ~/Developer/my-mincode-plugin/dist-plugin
 ```
 
-Set the required `category` (default `development`) and optional `tags`/`homepage` in `plugin.template.json` according to the [catalog contract](../../../../docs/development/local-plugin-template.md); the build preserves these fields in `plugin.json`. Only the built `plugin.json` is accepted; there is no legacy fallback or automatic migration. Invalid installed packages retain configuration/KV and show an error without starting.
+Set the required `category` (default `development`) and optional `tags`/`homepage` in `plugin.template.json` according to the [catalog contract](https://www.mincodeai.cn/llms/local-plugin-template.md); the build preserves these fields in `plugin.json`. Only the built `plugin.json` is accepted; there is no legacy fallback or automatic migration. Invalid installed packages retain configuration/KV and show an error without starting.
 
 Review the read-only preflight and explicitly confirm installation. Preflight does not copy, register, enable, execute, or write plugin data; installation revalidates. New local plugins install disabled. Review the capabilities, enable the plugin, and open **Vue + Go Plugin**. The same runtime protocol v1 supports custom third-party implementations, the vendored Go SDK used here, or the optional vendored Node SDK; the installer never injects a runtime.
 

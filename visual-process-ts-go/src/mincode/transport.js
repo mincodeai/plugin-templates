@@ -1,22 +1,28 @@
-/* global URLSearchParams, location, parent, setTimeout, clearTimeout, addEventListener, removeEventListener, TextEncoder, TextDecoder, btoa, atob */
+/* global URLSearchParams, location, parent, setTimeout, clearTimeout, addEventListener, removeEventListener, TextEncoder, TextDecoder, btoa, atob, WebSocket */
 import { applyThemeTokens } from './theme-tokens.js';
 
 export function createTransport({ onReady, onError, applyContext, onFilesDropped, onPathsDropped, onConfigurationChanged, onDocumentChanged, onFloatingChanged, onSave }) {
   const fragment = new URLSearchParams(location.hash.slice(1));
   const session = { sessionId: fragment.get('mincodeSession') ?? '', nonce: fragment.get('nonce') ?? '', generation: Number(fragment.get('generation')) };
-  const requestTimeoutGraceMs = 5000, legacyRequestTimeoutMs = 40000;
-  let port, sequence = 0, requestTimeoutMs = legacyRequestTimeoutMs, callsSupported = false, messagesSupported = false, binarySupported = false, tasksSupported = false, taskEventsSupported = false, clipboardWriteSupported = false, trustedConfirmSupported = false, configurationSupported = false, documentSupported = false, documentInfo = null, documentSaveHandler = null, openRequestSupported = false, openRequestHandler = null, openRequestSubscribed = false, floatingSupported = false, floatingClickHandler = null, floatingClickToken = '', visibilitySupported = false, pageVisible = true, connected = false, prefetchSupported = false, prefetchAction = '', prefetchOutcome = null, prefetchConsumed = false, closed = false, locale = 'zh';
+  const requestTimeoutGraceMs = 5000, legacyRequestTimeoutMs = 40000, aiConfigApplyTimeoutMs = 10 * 60000;
+  let port, sequence = 0, requestTimeoutMs = legacyRequestTimeoutMs, callsSupported = false, messagesSupported = false, binarySupported = false, tasksSupported = false, taskEventsSupported = false, clipboardWriteSupported = false, trustedConfirmSupported = false, aiConfigSupported = false, configurationSupported = false, documentSupported = false, documentInfo = null, documentSaveHandler = null, openRequestSupported = false, openRequestHandler = null, openRequestSubscribed = false, floatingSupported = false, floatingClickHandler = null, floatingClickToken = '', visibilitySupported = false, pageVisible = true, connected = false, prefetchSupported = false, prefetchAction = '', prefetchOutcome = null, prefetchConsumed = false, closed = false, locale = 'zh';
   const pending = new Map();
   const binaryListeners = new Set();
   const messageListeners = new Set();
   const maxMessageBytes = 256 * 1024;
   const taskListeners = new Set();
   const visibilityListeners = new Set();
+  // features.immersive / keyboardCapture: the host tells the page when it ends either.
+  const immersiveListeners = new Set();
+  const keyboardListeners = new Set();
+  let immersiveSupported = false, keyboardSupported = false, immersiveActive = false, keyboardCaptured = false;
   // prefetched(action) callers waiting for the connect message or the host's prefetch push.
   const prefetchWaiters = new Set();
   // Busy retries waiting for their next attempt; close() rejects them at once.
   const retryWaits = new Set();
   const maxBinaryBytes = 8 * 1024 * 1024;
+  const directOpenState = 1, directRetryStartMs = 500, directRetryMaxMs = 8000;
+  let directSupported = false, directSocket = null, directConnecting = false, directRetryTimer, directRetryMs = directRetryStartMs;
   const channelPattern = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
   const methodPattern = /^[A-Za-z][A-Za-z0-9_]*(?:[./:-][A-Za-z0-9_]+)*$/;
   const message = (zh, en) => locale === 'zh' ? zh : en;
@@ -30,6 +36,10 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     applyContext(value && typeof value === 'object' ? { ...value, surface } : value);
     applyThemeTokens(value?.themeTokens);
   }
+  // AI settings items are JSON by contract. Pages usually hold them in Vue reactive
+  // state, and the proxies cannot be structured-cloned by postMessage.
+  const jsonCopy = value => JSON.parse(JSON.stringify(value));
+
   function request(body, timeoutMs = requestTimeoutMs, transfer) {
     if (closed || !port) return Promise.reject(new Error(message('宿主未连接', 'Host is not connected')));
     if (pending.size >= 8) return Promise.reject(new Error(message('请求过多，请稍后重试', 'Too many requests; try again later')));
@@ -104,9 +114,80 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data instanceof Uint8Array ? data : null;
     if (typeof channel !== 'string' || !channelPattern.test(channel) || !bytes) return Promise.reject(Object.assign(new Error(message('二进制请求无效', 'Invalid binary request')), { code: 'invalid-request' }));
     if (bytes.byteLength > maxBinaryBytes) return Promise.reject(Object.assign(new Error(message('二进制数据超过 8 MiB，请分块发送', 'Binary data exceeds 8 MiB; send it in chunks')), { code: 'payload-too-large' }));
+    // The direct socket is a faster path to the same process; the bridge stays the fallback.
+    if (directSocket && directSocket.readyState === directOpenState) {
+      try {
+        directSocket.send(encodeDirectFrame(channel, bytes));
+        return Promise.resolve(true);
+      } catch { /* fall back to the bridge below */ }
+    }
     // Copy before transferring so the caller's buffer stays usable.
     const buffer = bytes.slice().buffer;
     return request({ type: 'mincode.plugin.binary', channel, data: buffer }, requestTimeoutMs, [buffer]);
+  }
+  // features.binaryDirect: a WebSocket to the host's asset server carries binary frames without
+  // base64 or event broadcasts. Frames are [channel length][channel][payload] both ways.
+  function encodeDirectFrame(channel, bytes) {
+    // Channel names are ASCII (channelPattern), so each character is one byte.
+    const name = Uint8Array.from(channel, (char) => char.charCodeAt(0));
+    const frame = new Uint8Array(1 + name.byteLength + bytes.byteLength);
+    frame[0] = name.byteLength;
+    frame.set(name, 1);
+    frame.set(bytes, 1 + name.byteLength);
+    return frame;
+  }
+  function deliverDirectFrame(buffer) {
+    if (!(buffer instanceof ArrayBuffer) || buffer.byteLength < 2) return;
+    const frame = new Uint8Array(buffer);
+    const length = frame[0];
+    if (length === 0 || frame.byteLength < 1 + length) return;
+    const channel = String.fromCharCode(...frame.subarray(1, 1 + length));
+    if (!channelPattern.test(channel)) return;
+    const data = frame.subarray(1 + length);
+    for (const listener of [...binaryListeners]) { try { listener(channel, data); } catch (cause) { onError(String(cause?.message ?? cause)); } }
+  }
+  function openDirect() {
+    if (!directSupported || closed || directSocket || directConnecting || typeof WebSocket !== 'function') return;
+    directConnecting = true;
+    request({ type: 'mincode.plugin.direct.token' }).then((result) => {
+      directConnecting = false;
+      if (closed || typeof result?.url !== 'string' || !/^ws:\/\/127\.0\.0\.1:\d+\/__mincode\/direct\?token=[0-9a-f]{64}$/.test(result.url)) return;
+      const socket = new WebSocket(result.url);
+      socket.binaryType = 'arraybuffer';
+      directSocket = socket;
+      socket.onopen = () => { if (directSocket === socket) directRetryMs = directRetryStartMs; };
+      socket.onmessage = (event) => { if (directSocket === socket) deliverDirectFrame(event.data); };
+      socket.onerror = () => {};
+      socket.onclose = () => {
+        if (directSocket !== socket) return;
+        directSocket = null;
+        scheduleDirectRetry();
+      };
+    }, () => {
+      directConnecting = false;
+      scheduleDirectRetry();
+    });
+  }
+  function scheduleDirectRetry() {
+    if (closed || directRetryTimer) return;
+    const delay = directRetryMs;
+    directRetryMs = Math.min(directRetryMs * 2, directRetryMaxMs);
+    directRetryTimer = setTimeout(() => { directRetryTimer = undefined; openDirect(); }, delay);
+  }
+  function closeDirect() {
+    if (directRetryTimer) { clearTimeout(directRetryTimer); directRetryTimer = undefined; }
+    const socket = directSocket;
+    directSocket = null;
+    if (socket) { socket.onclose = null; socket.onmessage = null; try { socket.close(); } catch { /* already closed */ } }
+  }
+  function takeover(supported, type) {
+    if (!supported) return Promise.reject(Object.assign(new Error(message('宿主不支持该功能，请升级 MinCode', 'This MinCode version does not support it; update MinCode')), { code: 'not-allowed' }));
+    return request({ type });
+  }
+  function subscribe(listeners, fn) {
+    if (typeof fn !== 'function') return () => {};
+    listeners.add(fn);
+    return () => { listeners.delete(fn); };
   }
   function task(operation, args) {
     if (!tasksSupported) return Promise.reject(new Error(message('宿主不支持任务协议', 'Host does not support the task protocol')));
@@ -119,10 +200,15 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     callsSupported = message.features?.calls === 1;
     messagesSupported = message.features?.messages === 1;
     binarySupported = message.features?.binary === 1;
+    directSupported = binarySupported && message.features?.binaryDirect === 1;
+    immersiveSupported = message.features?.immersive === 1;
+    keyboardSupported = message.features?.keyboardCapture === 1;
     tasksSupported = message.features?.tasks === 1;
     taskEventsSupported = tasksSupported && message.features?.taskEvents === 1;
     clipboardWriteSupported = message.features?.clipboardWrite === 1;
     trustedConfirmSupported = message.features?.trustedConfirm === 1;
+    // features.aiConfig: only for plugins that declared the ai.config capability.
+    aiConfigSupported = message.features?.aiConfig === 1;
     configurationSupported = message.features?.configuration === 1;
     documentSupported = message.features?.document === 1 && validDocument(message.document);
     documentInfo = documentSupported ? message.document : null;
@@ -152,6 +238,8 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
       // Messages the plugin process posted with host.ui.postMessage, in the order it sent them.
       if (data?.type === 'mincode.host.message') { if (messagesSupported && data.message !== undefined && data.message !== null) for (const listener of [...messageListeners]) { try { listener(data.message); } catch (cause) { onError(String(cause?.message ?? cause)); } } return; }
       // Binary frames the plugin process sent with sendBinary (runtime.transport "framed").
+      if (data?.type === 'mincode.host.immersive') { if (typeof data.active === 'boolean') { immersiveActive = data.active; for (const listener of [...immersiveListeners]) { try { listener(data.active); } catch (cause) { onError(String(cause?.message ?? cause)); } } } return; }
+      if (data?.type === 'mincode.host.keyboard') { if (data.captured === false) { keyboardCaptured = false; for (const listener of [...keyboardListeners]) { try { listener(); } catch (cause) { onError(String(cause?.message ?? cause)); } } } return; }
       if (data?.type === 'mincode.host.binary') { if (typeof data.channel === 'string' && data.data instanceof ArrayBuffer) for (const listener of [...binaryListeners]) { try { listener(data.channel, new Uint8Array(data.data)); } catch (cause) { onError(String(cause?.message ?? cause)); } } return; }
       // Host-read desktop drops for pages that opt in (bounded and validated by the host; the page re-validates).
       // Plugin settings changed (contributes.configuration): non-secret values only.
@@ -187,7 +275,7 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
       }
     };
     port.onmessageerror = close;
-    port.start(); connected = true; settlePrefetchWaiters(); context(message.context); if (message.features?.viewSave === 1 && onSave) port.postMessage({ type: 'mincode.plugin.view.save-subscribe' }); onReady(); subscribeOpenRequests();
+    port.start(); connected = true; settlePrefetchWaiters(); context(message.context); if (message.features?.viewSave === 1 && onSave) port.postMessage({ type: 'mincode.plugin.view.save-subscribe' }); onReady(); subscribeOpenRequests(); openDirect();
   }
   // Tells the host this page handles open requests; the host queues them until then.
   function subscribeOpenRequests() {
@@ -297,6 +385,7 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
   }
   function close() {
     closed = true;
+    closeDirect();
     removeEventListener('message', connect);
     removeEventListener('pagehide', close);
     if (port) { port.onmessage = null; port.onmessageerror = null; port.close(); port = undefined; }
@@ -306,6 +395,8 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     for (const entry of retryWaits) { clearTimeout(entry.timer); entry.reject(Object.assign(new Error(message('插件页面已关闭', 'Plugin page closed')), { code: 'busy' })); }
     retryWaits.clear();
     binaryListeners.clear();
+    immersiveListeners.clear();
+    keyboardListeners.clear();
     messageListeners.clear();
     taskListeners.clear();
     visibilityListeners.clear();
@@ -328,12 +419,32 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     },
     binary: {
       supported() { return binarySupported; },
+      // "direct" while the fast socket is open; "bridge" otherwise (the host relays frames).
+      mode() { return directSocket && directSocket.readyState === directOpenState ? 'direct' : 'bridge'; },
       send: sendBinary,
       onMessage(fn) {
         if (typeof fn !== 'function') return () => {};
         binaryListeners.add(fn);
         return () => { binaryListeners.delete(fn); };
       },
+    },
+    // Hide the MinCode chrome and make the window fullscreen while this page shows. The host keeps its
+    // own exit control and ends it when the page is hidden or closed; onChanged reports every change.
+    immersive: {
+      supported() { return immersiveSupported; },
+      active() { return immersiveActive; },
+      enter() { return takeover(immersiveSupported, 'mincode.plugin.immersive.enter'); },
+      exit() { return takeover(immersiveSupported, 'mincode.plugin.immersive.exit'); },
+      onChanged(fn) { return subscribe(immersiveListeners, fn); },
+    },
+    // Pause MinCode shortcuts so key combinations reach this page. The host releases it on Ctrl+Alt+Enter,
+    // when the window or page loses focus, or when the page closes; onReleased reports that.
+    keyboard: {
+      supported() { return keyboardSupported; },
+      captured() { return keyboardCaptured; },
+      capture() { return takeover(keyboardSupported, 'mincode.plugin.keyboard.capture').then((result) => { keyboardCaptured = result === true; return result; }); },
+      release() { return takeover(keyboardSupported, 'mincode.plugin.keyboard.release').then((result) => { keyboardCaptured = false; return result; }); },
+      onReleased(fn) { return subscribe(keyboardListeners, fn); },
     },
     surface() { return surface; },
     // views[].prefetch: the first-screen result the host fetched while the page loaded, once; undefined means call the action yourself.
@@ -374,6 +485,22 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
       if (!trustedConfirmSupported) return Promise.reject(Object.assign(new Error(message('宿主不支持可信确认', 'Host does not support trusted confirmation')), { code: 'not-allowed' }));
       if ((intent !== 'write' && intent !== 'dangerous') || typeof subject !== 'string' || !subject.trim()) return Promise.reject(Object.assign(new Error(message('确认请求无效', 'Invalid confirmation request')), { code: 'invalid-request' }));
       return request({ type: 'mincode.plugin.confirm', intent, subject: subject.trim() });
+    },
+    // ai.config: propose AI settings. The host compares them with the saved settings (preview, no key
+    // values come back) and writes the picked ones only after its own confirmation (apply).
+    aiConfig: {
+      supported() { return aiConfigSupported; },
+      preview(items) {
+        if (!aiConfigSupported) return Promise.reject(Object.assign(new Error(message('宿主不支持提交 AI 设置', 'Host does not accept AI settings')), { code: 'not-allowed' }));
+        if (!Array.isArray(items)) return Promise.reject(Object.assign(new Error(message('AI 设置请求无效', 'Invalid AI settings request')), { code: 'invalid-request' }));
+        return request({ type: 'mincode.plugin.ai-config.preview', items: jsonCopy(items) });
+      },
+      apply(items, choices) {
+        if (!aiConfigSupported) return Promise.reject(Object.assign(new Error(message('宿主不支持提交 AI 设置', 'Host does not accept AI settings')), { code: 'not-allowed' }));
+        if (!Array.isArray(items) || !Array.isArray(choices)) return Promise.reject(Object.assign(new Error(message('AI 设置请求无效', 'Invalid AI settings request')), { code: 'invalid-request' }));
+        // Waits for the user in the host confirmation, so it gets far longer than a normal request.
+        return request({ type: 'mincode.plugin.ai-config.apply', items: jsonCopy(items), choices: jsonCopy(choices) }, aiConfigApplyTimeoutMs);
+      },
     },
     // contributes.configuration: read the plugin's non-secret settings (secret
     // settings are only available to the plugin process) or open its settings page.

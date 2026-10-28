@@ -1,6 +1,6 @@
 # MinCode local process plugin template (Node.js)
 
-This dependency-free template implements the MinCode local-process plugin API v1.
+This dependency-free template implements a MinCode local-process command plugin (manifest API v2).
 It is intended for **macOS and Linux** hosts with Node.js 18 or newer. It uses a
 single executable `bin/plugin.mjs` entrypoint and a bundled `lib/runtime.mjs`, so no
 `npm install` is required.
@@ -16,7 +16,7 @@ single executable `bin/plugin.mjs` entrypoint and a bundled `lib/runtime.mjs`, s
 
 2. Edit `plugin.json` before installing:
    - Set a unique lower-case `id`, a display `name`, `version`, and `author`.
-   - Choose the required `category` (default `development`) and optional `tags`/`homepage` according to the [catalog contract](../../../../docs/development/local-plugin-template.md). Only `plugin.json` is accepted; no legacy fallback or automatic migration occurs. Invalid installed packages retain configuration/KV and show an error without starting.
+   - Choose the required `category` (default `development`) and optional `tags`/`homepage` according to the [catalog contract](https://www.mincodeai.cn/llms/local-plugin-template.md). Only `plugin.json` is accepted; no legacy fallback or automatic migration occurs. Invalid installed packages retain configuration/KV and show an error without starting.
    - Update the command IDs, labels, keywords, actions, and declared capabilities.
    - Keep `runtime.entry` relative to this directory. Absolute paths and traversal are rejected.
 
@@ -63,6 +63,6 @@ contract. Keep stdout protocol-only and retain payload validation and cleanup.
 - The plugin process boundary is not an OS sandbox. Request only the capabilities you need and
   treat `shell`, `network`, workspace access, and secrets as high-risk declarations.
 
-See [`docs/architecture/plugin-system.md`](../../../../docs/architecture/plugin-system.md) in the
+See `docs/architecture/plugin-system.md`（MinCode 仓库 `docs/architecture/plugin-system.md`） in the
 MinCode repository for the complete manifest schema, capability model, packaging restrictions,
 and JSON-RPC contract.

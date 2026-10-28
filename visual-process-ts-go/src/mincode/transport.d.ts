@@ -17,7 +17,7 @@ export interface HostContext {
 /**
  * Rejections carry a host error code such as busy, cancelled, not-allowed, invalid-request, payload-too-large, host-unavailable.
  * While a closed tab's page is kept warm (visible() is false and the tab is closed), the host answers not-allowed to
- * confirm, pickPath, configuration.open, clipboard.writeText, floating show/activate/resize, write/dangerous actions,
+ * confirm, pickPath, configuration.open, clipboard.writeText, floating show/activate/resize, aiConfig.apply, write/dangerous actions,
  * actions with host result handling and tasks.start; reads, request(), configuration.get and task get/cancel still work.
  */
 export interface TransportError extends Error {
@@ -65,6 +65,59 @@ export interface DroppedPath {
   [key: string]: unknown;
 }
 
+/**
+ * ai.config: one model profile, MCP connector or skill as the source app stores it. `sourceId` must be stable
+ * across runs (it identifies the item on the next sync); invalid or duplicate items reject the whole request.
+ */
+export type AiConfigItem = { sourceId: string; name: string; sourceApp: string } & (
+  | {
+      kind: 'profile';
+      profile: {
+        baseUrl: string;
+        apiKey: string;
+        model: string;
+        apiFormat: 'openai' | 'openai-responses' | 'anthropic';
+        anthropicAuth?: 'x-api-key' | 'bearer';
+        commonModels: string[];
+        subagentModel?: string;
+        reasoningEffort?: string;
+        contextWindow?: number;
+      };
+    }
+  | {
+      kind: 'mcp';
+      mcp: { transport: 'stdio' | 'http'; command: string; args: string[]; url: string; env: Record<string, string>; headers: Record<string, string> };
+    }
+  | { kind: 'skill'; skill: { content: string; description?: string; docsUrl?: string; hasExtraFiles: boolean } }
+);
+
+/** ai.config: how an item compares with the saved settings. Never contains secret values. */
+export interface AiConfigPreviewEntry {
+  key: string;
+  kind: 'profile' | 'mcp' | 'skill';
+  name: string;
+  sourceApp: string;
+  status: 'new' | 'update' | 'conflict' | 'unchanged';
+  needsSecret: boolean;
+  changedFields: string[];
+  secretChanged: boolean;
+  targetName?: string;
+  /** "possible-duplicate", "extra-files". */
+  notes: string[];
+}
+
+/** ai.config: "add" fits status new, "overwrite" fits update and conflict. */
+export interface AiConfigChoice {
+  key: string;
+  action: 'add' | 'overwrite';
+}
+
+export interface AiConfigApplyResult {
+  added: number;
+  overwritten: number;
+  failed: { key: string; reason: string }[];
+}
+
 export interface TransportOptions {
   /** Host waits for this acknowledgement before closing or popping out a workspace tab. Reject to keep it open. Not an OS shutdown guarantee. */
   onSave?(): Promise<void>;
@@ -105,10 +158,45 @@ export interface Transport {
   /** Binary frames to and from the plugin process; needs plugin.json runtime.transport "framed". */
   binary: {
     supported(): boolean;
-    /** Sends one frame of at most 8 MiB (chunk larger data); resolves once the host forwarded it. */
+    /**
+     * "direct" while the fast socket to the host is open (newer hosts open it automatically for framed
+     * plugins), "bridge" while frames are relayed over the page channel. Both reach the same process.
+     */
+    mode(): 'direct' | 'bridge';
+    /**
+     * Sends one frame of at most 8 MiB (chunk larger data). Over the direct socket it resolves once
+     * queued; over the bridge, once the host forwarded it.
+     */
     send(channel: string, data: Uint8Array | ArrayBuffer): Promise<unknown>;
     /** Receives frames the plugin process sent; returns an unsubscribe function. */
     onMessage(listener: (channel: string, data: Uint8Array) => void): () => void;
+  };
+  /**
+   * Hides the MinCode chrome and makes the window fullscreen while this page is the visible view
+   * (remote desktops, media). The host keeps its own exit control and ends it when the page is
+   * hidden or closed. enter/exit reject with code "not-allowed" on hosts without the feature.
+   */
+  immersive: {
+    supported(): boolean;
+    active(): boolean;
+    enter(): Promise<boolean>;
+    /** Resolves to false when this page was not immersive. */
+    exit(): Promise<boolean>;
+    /** Called with every change, including exits the host made; returns an unsubscribe function. */
+    onChanged(listener: (active: boolean) => void): () => void;
+  };
+  /**
+   * Pauses MinCode shortcuts so key combinations reach this page. The host releases it on Ctrl+Alt+Enter,
+   * when the window or page loses focus, or when the page closes. System shortcuts (for example Cmd+Tab)
+   * never reach the page.
+   */
+  keyboard: {
+    supported(): boolean;
+    captured(): boolean;
+    capture(): Promise<boolean>;
+    release(): Promise<boolean>;
+    /** Called when the host released the keyboard; returns an unsubscribe function. */
+    onReleased(listener: () => void): () => void;
   };
   /**
    * Opens a host file or folder dialog after the host asks the user to confirm.
@@ -161,6 +249,22 @@ export interface Transport {
   };
   /** Trusted host confirmation; resolves false when the user declines. */
   confirm(request: { intent: 'write' | 'dangerous'; subject: string }): Promise<boolean>;
+  /**
+   * ai.config (plugin.json capability): propose model profiles, MCP connectors and skills to the AI settings.
+   * Methods reject with code "not-allowed" when supported() is false.
+   */
+  aiConfig: {
+    supported(): boolean;
+    /** Compares the items with the saved settings; entries never contain API keys or env/header values. */
+    preview(items: AiConfigItem[]): Promise<{ entries: AiConfigPreviewEntry[] }>;
+    /**
+     * Writes the chosen entries after the host's own confirmation dialog; rejects with code "cancelled" when the
+     * user declines, "busy" while another apply of this plugin is open. Added connectors start turned off. Only the
+     * items the dialog listed are written; other choices come back in `failed` ("invalid-choice"), as do items that
+     * changed after the dialog was shown ("changed-since-review").
+     */
+    apply(items: AiConfigItem[], choices: AiConfigChoice[]): Promise<AiConfigApplyResult>;
+  };
   configuration: {
     /** Non-secret settings only; secret settings stay with the plugin process. */
     get(keys?: string[]): Promise<Record<string, unknown>>;
