@@ -36,9 +36,16 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
     applyContext(value && typeof value === 'object' ? { ...value, surface } : value);
     applyThemeTokens(value?.themeTokens);
   }
-  // AI settings items are JSON by contract. Pages usually hold them in Vue reactive
-  // state, and the proxies cannot be structured-cloned by postMessage.
+  // Action payloads, method params and AI settings items are JSON by contract (they reach the process
+  // over JSON-RPC). Pages usually hold them in Vue reactive state, and the proxies cannot be
+  // structured-cloned by postMessage ("[object Array] could not be cloned"), so send a plain copy.
   const jsonCopy = value => JSON.parse(JSON.stringify(value));
+  // undefined stays undefined (no payload); values JSON cannot represent are rejected before posting.
+  function jsonArgument(value) {
+    if (value === undefined) return { value };
+    try { return { value: jsonCopy(value) }; }
+    catch { return { error: Object.assign(new Error(message('参数必须可序列化为 JSON', 'Arguments must be JSON-serializable')), { code: 'invalid-request' }) }; }
+  }
 
   function request(body, timeoutMs = requestTimeoutMs, transfer) {
     if (closed || !port) return Promise.reject(new Error(message('宿主未连接', 'Host is not connected')));
@@ -66,8 +73,10 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
       ...(options?.multiple === true ? { multiple: true } : {}),
       ...(Array.isArray(options?.extensions) ? { extensions: options.extensions } : {}),
     });
+    const argument = jsonArgument(payload);
+    if (argument.error) return Promise.reject(argument.error);
     let attempt = 0;
-    const send = () => request({ type: 'mincode.plugin.invoke', action, payload });
+    const send = () => request({ type: 'mincode.plugin.invoke', action, payload: argument.value });
     const retry = cause => {
       if (cause?.code !== 'busy' || attempt >= busyRetryDelaysMs.length || closed) throw cause;
       const delay = busyRetryDelaysMs[attempt];
@@ -80,7 +89,9 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
   function callMethod(method, params) {
     if (!callsSupported) return Promise.reject(Object.assign(new Error(message('宿主不支持插件方法调用', 'Host does not support plugin method calls')), { code: 'not-allowed' }));
     if (typeof method !== 'string' || method.length > 128 || !methodPattern.test(method) || /^(plugin|host|rpc)\./i.test(method)) return Promise.reject(Object.assign(new Error(message('方法名无效', 'Invalid method name')), { code: 'invalid-request' }));
-    return request({ type: 'mincode.plugin.call', method, params: params === undefined ? null : params });
+    const argument = jsonArgument(params === undefined ? null : params);
+    if (argument.error) return Promise.reject(argument.error);
+    return request({ type: 'mincode.plugin.call', method, params: argument.value });
   }
   // features.messages: free-form JSON to this plugin's process (plugin.ui.message), like VS Code's webview postMessage.
   // Messages go out one at a time in posting order, so a burst never hits the eight-request bound (at most
