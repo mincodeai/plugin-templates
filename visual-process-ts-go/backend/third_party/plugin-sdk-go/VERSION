@@ -2,5 +2,5 @@
 # Source: packages/plugin-sdk-go in the MinCode repository (tests, testdata and
 # internal golden tooling are omitted). Do not edit these files by hand; update
 # the SDK and run: node tools/plugin-sdk/sync-go-sdk.mjs
-sha256 d376e7d3f0da99a23cbefd60e1fe40365596a1a1e03a73de8eab3bdccf330b23
-files 45
+sha256 fc16e6770692c5a61deb9049d6f60c71f2efbbba7fc8ad46566242247a177719
+files 46
