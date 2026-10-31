@@ -1,7 +1,7 @@
 {
   "apiVersion": 2,
   "id": "host-api-showcase",
-  "name": "Host API Showcase / 宿主接口实测",
+  "name": "宿主接口实测 / Host API Showcase",
   "version": "0.1.0",
   "description": "Manual test plugin for the generic host UI requests, plugin calls, host events and schedules (docs/verification/contribution-points.md §8). Not for release.",
   "category": "development",
