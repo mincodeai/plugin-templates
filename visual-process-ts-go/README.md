@@ -31,7 +31,7 @@ pnpm verify
 
 Or create it with `mincode plugin create ./my-plugin --template visual-process-ts-go --id example.ui`. `pnpm verify` runs Go unit tests, an executable-level JSON-RPC protocol test, `tsc` type checking, the UI/backend build and package-limit checks. Install the generated absolute `dist-plugin` directory from **Plugin Management**, review the read-only preflight, confirm, and enable it.
 
-To iterate on the page without the desktop app, run the devkit mock host against the built package: `node <devkit>/bin/mincode.mjs mock-host dist-plugin`. It uses the same sandbox and handshake and lets you switch theme and locale. Finish with a desktop smoke test.
+To iterate on the page without the desktop app, run the mock host from the MinCode plugin development kit against the absolute path of the built package: `node tools/mock-host.mjs /absolute/my-plugin/dist-plugin` from the kit root (in the MinCode repository the script is `tools/plugin-devkit/mock-host.mjs`). It uses the same sandbox and handshake and lets you switch theme and locale. Finish with a desktop smoke test.
 
 ## The framework-neutral UI core
 
@@ -41,7 +41,7 @@ To iterate on the page without the desktop app, run the devkit mock host against
 - `tasks.mjs`: `runTask`, `runTaskOrCall`, `runAIAction` polling helpers.
 - `theme.css`: the host's `--app-*` semantic variables for every built-in light and dark theme, generated from the host foundation stylesheet, plus thin scrollbars. Set `data-theme` from `applyContext`; contributed theme tokens are applied by the transport automatically.
 
-Update it from a newer devkit with `node <devkit>/tools/sync-plugin-ui.mjs --core --source <devkit>/sdk/plugin-ui-core src/mincode` (add `--check` to only check). Local edits are refused.
+Update it, together with the vendored Go SDK, with a newer `mincode` CLI: `mincode plugin sync` in the project root (`mincode plugin sync --check` only checks). The CLI reads `src/mincode/VERSION` to tell the core copy from the full one and never mixes them. Local edits are refused and nothing is written. Without the CLI, run `node tools/sync-plugin-ui.mjs --core --source sdk/plugin-ui-core /absolute/my-plugin/src/mincode` from a newer devkit root.
 
 ## Using another framework
 

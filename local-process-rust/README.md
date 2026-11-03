@@ -17,8 +17,8 @@ mincode plugin pack dist-plugin
 
 Or use `mincode plugin test .` and `mincode plugin build .`; the native CLI
 reads these commands from `mincode.config.json` and needs no Node installation.
-The exported Node devkit also creates this project; use Cargo to build it,
-then `mincode pack dist-plugin` or `npm run pack:plugin` to pack it.
+Create the project with `mincode plugin create ./my-rust --template local-process-rust --id example.rust`
+(the `mincode` CLI that ships with the MinCode desktop app embeds this template).
 
 Edit `plugin.template.json` (ID, name, version, command IDs), not the generated
 `dist-plugin/plugin.json`. The executable embeds its own manifest identity at

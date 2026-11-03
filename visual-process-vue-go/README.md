@@ -67,11 +67,10 @@ const rows = await runTaskOrCall(transport, "import", payload);
 
 Errors carry `cancelled: true` (cancelled; `result` holds any partial result) or `uncertain: true` (a poll failed, the deadline passed or the host could not confirm the outcome; do not retry blindly); failed tasks throw the host's message with `code` and `snapshot`. `onSnapshot` sees every snapshot (e.g. `cancelRequested`), and `pollMs` / `deadlineMs` tune polling. `clipUtf8`/`utf8Length` keep payloads within the 256 KiB limit.
 
-To iterate on the page without the desktop app, run the mock host from the MinCode plugin development kit (or `node tools/plugin-devkit/mock-host.mjs` in the MinCode repository) against the built package:
+To iterate on the page without the desktop app, run the mock host from the MinCode plugin development kit (in the MinCode repository the script is `tools/plugin-devkit/mock-host.mjs`) against the built package. Run `pnpm verify` in the project first, then from the kit root:
 
 ```bash
-pnpm verify
-node <devkit>/bin/mincode.mjs mock-host dist-plugin   # add --responses fixtures.json for UI-only work
+node tools/mock-host.mjs /absolute/my-plugin/dist-plugin   # add --responses fixtures.json for UI-only work
 ```
 
 It embeds the page with the same sandbox and handshake as MinCode, forwards actions to the real Go process through an in-memory host, confirms `write`/`dangerous` actions, and switches theme and locale. It is a development aid; finish with a desktop smoke test.
@@ -99,18 +98,16 @@ require github.com/mincodeai/plugin-sdk-go v0.0.0-00010101000000-000000000000
 replace github.com/mincodeai/plugin-sdk-go => ./third_party/plugin-sdk-go
 ```
 
-Builds work offline and outside the MinCode repository (`GOWORK=off go build ./...`). Do not edit `third_party/plugin-sdk-go`; its `VERSION` file records a checksum of the copy. To update it, re-copy it with the sync script, which replaces the whole directory, then re-run the tests:
+Builds work offline and outside the MinCode repository (`GOWORK=off go build ./...`). Do not edit `third_party/plugin-sdk-go`; its `VERSION` file records a checksum of the copy. To update it, use a newer `mincode` CLI, which replaces the whole directory with its built-in copy (and updates `src/mincode/` in the same run), then re-run the tests:
 
 ```bash
-# from a newer MinCode source checkout
-node /path/to/mincode/tools/plugin-sdk/sync-go-sdk.mjs ~/Developer/my-mincode-plugin/backend
-# or from a newer MinCode plugin development kit
-node /path/to/kit/tools/sync-go-sdk.mjs --source /path/to/kit/sdk/go ~/Developer/my-mincode-plugin/backend
-
-# verify the copy is intact (fails on local edits or missing files)
-node /path/to/mincode/tools/plugin-sdk/sync-go-sdk.mjs --check ~/Developer/my-mincode-plugin/backend
+cd ~/Developer/my-mincode-plugin
+mincode plugin sync --check   # only check; exits 1 when a copy differs from this CLI
+mincode plugin sync
 cd backend && go test ./...
 ```
+
+Without the CLI, run the Node script from a newer MinCode plugin development kit root: `node tools/sync-go-sdk.mjs --source sdk/go /absolute/my-plugin/backend` (add `--check` to only check).
 
 Inside the MinCode repository, `pnpm sync:go-sdk` refreshes this template's copy and CI runs `pnpm verify:go-sdk-vendor`, which fails when the copy drifts from `packages/plugin-sdk-go`.
 
@@ -239,13 +236,19 @@ Import `PluginStatusArea` from `@mincode/plugin-ui/PluginStatusArea.vue`. Ordina
 
 ### Updating the vendored UI
 
-Do not edit `src/mincode/` by hand. `VERSION` contains file checksums (not the host application version). From a newer **exported devkit root**:
+Do not edit `src/mincode/` by hand. `VERSION` contains file checksums (not the host application version). Update it with a newer `mincode` CLI (the same run also updates `backend/third_party/plugin-sdk-go/`):
 
 ```sh
-node tools/sync-plugin-ui.mjs --source sdk/plugin-ui --check /absolute/my-plugin/src/mincode
-node tools/sync-plugin-ui.mjs --source sdk/plugin-ui /absolute/my-plugin/src/mincode
+mincode plugin sync --check /absolute/my-plugin
+mincode plugin sync /absolute/my-plugin
 ```
 
-`--check` never writes. Updates replace only managed files, remove obsolete unmodified managed files, preserve unknown business files, and refuse locally edited managed files, symlinks, hard links or overlapping source/target paths. Back up/move local edits out of the vendor directory before updating; there is no force-overwrite flag. Keep customizations in your own components/styles.
+`--check` never writes. Updates replace only managed files, remove obsolete unmodified managed files, preserve unknown business files, and refuse locally edited managed files, symlinks and hard links; one locally edited file stops the whole run before anything is written. Back up/move local edits out of the vendor directory before updating; `--force` exists only for old copies without a `VERSION` file (together with `--full` or `--core`). Keep customizations in your own components/styles.
+
+Without the CLI, run the Node script from a newer **exported devkit root** (same rules, `--check` only checks):
+
+```sh
+node tools/sync-plugin-ui.mjs --source sdk/plugin-ui /absolute/my-plugin/src/mincode
+```
 
 Legacy projects with only the five bridge files can update unchanged copies and continue importing `./transport`. Updating the library does **not** rewrite your App, dependencies or configuration. To adopt the new components in an older project, separately add the `@mincode/plugin-ui` Vite/TypeScript alias, `@element-plus/icons-vue`, shared mounting/styles (with explicit extra component CSS), and remove conflicting theme definitions. Re-run `pnpm verify`, then rebuild/reinstall the plugin. Already installed plugins never change just because the source library or host was updated.

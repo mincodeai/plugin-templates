@@ -413,6 +413,42 @@ button {
   user-select: none;
 }
 
+/* "More tabs" button: as tall as the tab bar so the dots and hover fill are centred
+   (Element Plus's .el-button height would otherwise win and pin it to the top). */
+.app-top-tabs > .el-dropdown {
+  align-self: stretch;
+  align-items: stretch;
+}
+.app-top-tabs .el-button.app-tabs-overflow {
+  position: relative;
+  display: flex;
+  width: 42px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-left: 1px solid var(--app-border);
+  background: transparent;
+  color: inherit;
+}
+.app-top-tabs .el-button.app-tabs-overflow:hover,
+.app-top-tabs .el-button.app-tabs-overflow:focus-visible {
+  background: var(--app-surface-hover);
+}
+.app-tabs-overflow b {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  border-radius: 8px;
+  background: var(--app-accent);
+  padding: 0 4px;
+  color: var(--app-text-on-accent);
+  font-size: 8px;
+}
+
 .app-brand-mark {
   display: flex;
   width: var(--app-activity-rail-width);
@@ -542,6 +578,12 @@ button {
   background: var(--app-surface);
   color: var(--app-text);
   font: inherit;
+}
+/* An el-input already outlines its .el-input__wrapper (accent on focus); the root
+   border above would stack on it as a second frame. */
+.el-input.app-inline-rename {
+  border: 0;
+  background: transparent;
 }
 .app-workspace-tab__rename {
   display: flex;
