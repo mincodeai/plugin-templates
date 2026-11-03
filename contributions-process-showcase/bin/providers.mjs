@@ -133,6 +133,15 @@ export async function treeChildren({ parent, locale, project }) {
 
 // ---------------------------------------------------------- language feature
 
+// Host limits for documentSymbol results (contribution-points.json:
+// documentSymbolsMax, documentSymbolDepthMax, symbolNameMaxRunes, columnMax).
+// The host truncates anything beyond them; staying inside keeps results whole.
+const SYMBOLS_MAX = 500;
+const SYMBOL_DEPTH_MAX = 8;
+const SYMBOL_NAME_MAX = 128;
+const COLUMN_MAX = 100_000;
+const WHEN_LINE = /^\s*when\b/;
+
 function wordAt(line, column) {
   let start = Math.max(0, column - 1);
   let end = start;
@@ -141,16 +150,108 @@ function wordAt(line, column) {
   return line.slice(start, end);
 }
 
+const column = value => Math.min(value, COLUMN_MAX);
+const range = (startLine, startColumn, endLine, endColumn) => ({ startLine, startColumn: column(startColumn), endLine, endColumn: column(endColumn) });
+/** The code of a line: comment removed, trailing whitespace trimmed. */
+const codeOf = line => line.replace(/#.*$/, '').trimEnd();
+const indentOf = code => code.length - code.trimStart().length;
+const symbolName = value => value.replace(/[\u0000-\u001f\u007f-\u009f\s]+/g, ' ').trim().slice(0, SYMBOL_NAME_MAX);
+
+/** The `task <name>` line of a task: the code as range, the name as selectionRange. */
+function taskLocation(line, lineNumber, name) {
+  const code = codeOf(line);
+  const nameStart = code.indexOf(name, indentOf(code) + 'task'.length) + 1;
+  return {
+    range: range(lineNumber, indentOf(code) + 1, lineNumber, code.length + 1),
+    selectionRange: range(lineNumber, nameStart, lineNumber, nameStart + name.length),
+  };
+}
+
 /**
- * {provider, feature, languageId, text, startLine, position: {line, column}, locale}
- * => hover {contents} or completion {items}. `text` may be a window that starts
- * at document line `startLine`.
+ * documentSymbol: one `function` per top-level `task <name>` block and one
+ * `event` per `when` block inside it (nested `when` blocks nest). Ranges run
+ * from the opening line to its `end` (or the last line when unterminated);
+ * lines are absolute document lines.
+ */
+export function documentSymbols(text, startLine = 1) {
+  const lines = text.split(/\r?\n/);
+  const offset = Number.isSafeInteger(startLine) && startLine >= 1 ? startLine : 1;
+  const symbols = [];
+  // Open blocks: the symbol each one created (or null) and where symbols inside it go (null: nowhere).
+  const stack = [];
+  let count = 0;
+  const top = () => stack.at(-1) ?? { children: symbols, depth: 0 };
+  const openSymbol = symbol => {
+    const parent = top();
+    if (!parent.children || parent.depth >= SYMBOL_DEPTH_MAX || count >= SYMBOLS_MAX) {
+      stack.push({ symbol: null, children: null, depth: parent.depth });
+      return;
+    }
+    symbol.children = [];
+    parent.children.push(symbol);
+    count += 1;
+    stack.push({ symbol, children: symbol.children, depth: parent.depth + 1 });
+  };
+  // A block without a symbol: inside a task it passes children through; at the top level it hides them.
+  const openBlock = () => {
+    const parent = top();
+    stack.push({ symbol: null, children: stack.length > 0 ? parent.children : null, depth: parent.depth });
+  };
+  const close = (lineNumber, code) => {
+    const frame = stack.pop();
+    if (!frame?.symbol) return;
+    frame.symbol.range.endLine = lineNumber;
+    frame.symbol.range.endColumn = column(code.length + 1);
+    if (frame.symbol.children.length === 0) delete frame.symbol.children;
+  };
+  lines.forEach((line, index) => {
+    const lineNumber = index + offset;
+    const code = codeOf(line);
+    const task = TASK_LINE.exec(code);
+    if (task && stack.length === 0) {
+      const { range: lineRange, selectionRange } = taskLocation(line, lineNumber, task[1]);
+      openSymbol({ name: symbolName(task[1]), kind: 'function', range: lineRange, selectionRange });
+    } else if (WHEN_LINE.test(code) && stack.length > 0) {
+      const start = indentOf(code) + 1;
+      openSymbol({
+        name: symbolName(code),
+        kind: 'event',
+        range: range(lineNumber, start, lineNumber, code.length + 1),
+        selectionRange: range(lineNumber, start, lineNumber, code.length + 1),
+      });
+    } else if (BLOCK_OPEN.test(code)) {
+      openBlock();
+    } else if (BLOCK_END.test(code)) {
+      close(lineNumber, code);
+    }
+  });
+  const lastLine = lines.length + offset - 1;
+  while (stack.length > 0) close(lastLine, codeOf(lines[lines.length - 1] ?? ''));
+  return symbols;
+}
+
+/** definition: the `task <name>` line of the task named under the cursor, in this document (no path). */
+function taskDefinition(text, lines, offset, current, position) {
+  const word = wordAt(current, position.column);
+  if (!word) return { locations: [] };
+  const task = parseTasks(text).find(entry => entry.name === word);
+  if (!task) return { locations: [] };
+  return { locations: [taskLocation(lines[task.line - 1], task.line + offset - 1, task.name)] };
+}
+
+/**
+ * {provider, feature, languageId, text, startLine, position?: {line, column}, locale}
+ * => hover {contents}, completion {items}, definition {locations} or
+ * documentSymbol {symbols}. `text` may be a window that starts at document
+ * line `startLine` (documentSymbol always gets the whole document).
  */
 export function languageFeature({ feature, text, startLine, position, locale }) {
   const language = zh(locale) ? 'zh' : 'en';
   const lines = text.split(/\r?\n/);
   const offset = Number.isSafeInteger(startLine) && startLine >= 1 ? startLine : 1;
+  if (feature === 'documentSymbol') return { symbols: documentSymbols(text, offset) };
   const current = lines[position.line - offset] ?? '';
+  if (feature === 'definition') return taskDefinition(text, lines, offset, current, position);
   if (feature === 'hover') {
     const word = wordAt(current, position.column);
     if (!word) return { contents: [] };

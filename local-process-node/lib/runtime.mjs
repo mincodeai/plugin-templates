@@ -321,6 +321,29 @@ export function createStatusBarAPI(host) {
   };
 }
 
+// File decorations (contributes.fileDecorations, capability `workspace.read`,
+// host 0.3.0). refresh() is a data-free hint asking the project tree to
+// re-request this plugin's decorations for the directories it shows; the
+// host applies at most one hint per plugin every 2 s and answers
+// { scheduled: false } for the rest. Hosts without the method (or a plugin
+// without fileDecorations) answer -32601, which resolves to { scheduled: false }.
+export function createDecorationsAPI(host) {
+  return {
+    async refresh() {
+      let result;
+      try { result = await host('host.decorations.refresh', {}); }
+      catch (error) {
+        if (error?.code === -32601) return { scheduled: false };
+        throw error;
+      }
+      if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.scheduled !== 'boolean') {
+        throw pluginError('INVALID_HOST_RESULT', 'Host returned an invalid decorations refresh result');
+      }
+      return { scheduled: result.scheduled };
+    },
+  };
+}
+
 export function quoteShellArgument(value) {
   const text = String(value);
   if (text.includes('\0')) throw pluginError('INVALID_ARGUMENT', 'Shell argument contains NUL');
@@ -418,13 +441,15 @@ export function createClipboardAPI(host) {
 }
 
 // Capability `notifications`: title <= 80, body <= 500 characters, at most 10 per minute.
+// `actions` (host 0.3.0; older hosts ignore them): up to 2 `{ id, title, command }`
+// buttons naming this plugin's own commands; passed through as-is, the host validates.
 export function createNotificationsAPI(host) {
   return {
-    notify({ title, body, level = 'info', system = false, viewId } = {}) {
+    notify({ title, body, level = 'info', system = false, viewId, actions } = {}) {
       if (typeof title !== 'string' || !title.trim() || [...title].length > 80) throw pluginError('INVALID_ARGUMENT', 'Notification title must be 1–80 characters');
       if (body !== undefined && (typeof body !== 'string' || [...body].length > 500)) throw pluginError('INVALID_ARGUMENT', 'Notification body must be at most 500 characters');
       if (!['info', 'success', 'warning', 'error'].includes(level)) throw pluginError('INVALID_ARGUMENT', 'Notification level must be info, success, warning or error');
-      return host('host.notify', { title, ...(body === undefined ? {} : { body }), level, system: Boolean(system), ...(viewId === undefined ? {} : { viewId }) });
+      return host('host.notify', { title, ...(body === undefined ? {} : { body }), level, system: Boolean(system), ...(viewId === undefined ? {} : { viewId }), ...(actions === undefined ? {} : { actions }) });
     },
   };
 }
@@ -448,6 +473,43 @@ export function createAIAPI(host) {
     cancel: turnId => host('host.ai.turn.cancel', { id: id(turnId) }),
     approve: (turnId, approvalId, approved) => host('host.ai.turn.approve', { id: id(turnId), approvalId: id(approvalId), approved: Boolean(approved) }),
   };
+}
+
+// Capability `ui`: host.view.open. open({ viewId, pluginId?, entry?, params? }) opens one of the
+// plugin's views (or another plugin's with pluginId); with entry the page receives an open request
+// carrying params (strings, numbers, booleans; at most 16 keys). raise: true also brings the main
+// window to the front: it needs activation, the single-use token from onGlobalShortcutActivation
+// (valid 120 s), and only the plugin's own tab view. The host refuses an invalid token with
+// error.data.code "activation_invalid" (and any raise while MinCode is locked with "locked");
+// an open without raise never moves the window.
+export function createViewsAPI(host) {
+  return {
+    open({ viewId, pluginId, entry, params, raise = false, activation } = {}) {
+      if (typeof viewId !== 'string' || !viewId) throw pluginError('INVALID_ARGUMENT', 'viewId is required');
+      if (typeof raise !== 'boolean') throw pluginError('INVALID_ARGUMENT', 'raise must be a boolean');
+      if (activation !== undefined && (typeof activation !== 'string' || !activation)) throw pluginError('INVALID_ARGUMENT', 'activation must be a non-empty string');
+      if (raise && activation === undefined) throw pluginError('INVALID_ARGUMENT', 'raise needs the activation token from onGlobalShortcutActivation');
+      if (!raise && activation !== undefined) throw pluginError('INVALID_ARGUMENT', 'activation is only used with raise');
+      return host('host.view.open', {
+        ...(pluginId === undefined ? {} : { pluginId }), viewId,
+        ...(entry === undefined ? {} : { entry }), ...(params === undefined ? {} : { params }),
+        ...(raise ? { raise: true, activation } : {}),
+      });
+    },
+  };
+}
+
+// triggerFrom(payload) returns { type, id } when an action was started by a trigger — a global
+// shortcut press adds { trigger: { type: 'globalShortcut', id } } to its fixed payload — else null.
+// payload may be the parsed object or its JSON text.
+export function triggerFrom(payload) {
+  let body = payload;
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch { return null; }
+  }
+  const trigger = body && typeof body === 'object' && !Array.isArray(body) ? body.trigger : undefined;
+  if (!trigger || typeof trigger !== 'object' || typeof trigger.type !== 'string' || !trigger.type || typeof trigger.id !== 'string' || !trigger.id) return null;
+  return { type: trigger.type, id: trigger.id };
 }
 
 // No capability required. describe() lists the host methods, events and limits this plugin may use.
@@ -736,19 +798,24 @@ export function createServicesAPI(host, { maxChunkBytes = SERVICE_CHUNK_BYTES, m
 }
 
 // Reads the payload a provider's action receives: { callId, service, entry,
-// text?, files?, params, caller }.
+// text?, files?, params, caller, surfaceContext? }. surfaceContext is the
+// object newer host surfaces add (host 0.3.0: sftpFile, dbResult,
+// httpResponse, terminalSelection), already trimmed by the host to the
+// provider's capabilities.
 export function decodeServiceRequest(payload) {
   const invalid = () => pluginError('INVALID_ARGUMENT', 'Invalid service request');
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw invalid();
-  const { callId, service, entry, input, params, caller } = payload;
+  const { callId, service, entry, input, params, caller, surfaceContext } = payload;
   if (![callId, service, entry].every(value => typeof value === 'string' && value)) throw invalid();
   if (input !== undefined && input !== null && typeof input !== 'string' && !Array.isArray(input)) throw invalid();
+  if (surfaceContext !== undefined && surfaceContext !== null && (typeof surfaceContext !== 'object' || Array.isArray(surfaceContext))) throw invalid();
   return {
     callId, service, entry,
     text: typeof input === 'string' ? input : undefined,
     files: Array.isArray(input) ? input : undefined,
     params: params && typeof params === 'object' && !Array.isArray(params) ? params : {},
     caller: caller && typeof caller === 'object' ? caller : {},
+    ...(surfaceContext ? { surfaceContext } : {}),
   };
 }
 
@@ -830,6 +897,13 @@ export function start(createActions, {
   // Events reach only a running plugin and never start one.
   onEvent,
   events,
+  // Global shortcuts: called with (id, token, { host }) after one of the plugin's
+  // global shortcut actions finished (successfully or not) and the host got its
+  // ack. token is single-use and valid for 120 s; pass it to
+  // createViewsAPI(host).open({ viewId, raise: true, activation: token }) to
+  // bring the main window forward on the plugin's own tab view. Without it the
+  // request answers -32601, which the host ignores.
+  onGlobalShortcutActivation,
   // { id, version? } reported in the initialize result so the host can reject
   // an entry that belongs to another plugin. Keep it equal to plugin.json.
   plugin,
@@ -892,6 +966,7 @@ export function start(createActions, {
   if (plugin !== undefined && (typeof plugin?.id !== 'string' || !plugin.id || (plugin.version !== undefined && typeof plugin.version !== 'string'))) throw new TypeError('plugin must be { id, version? }');
   if (onConfigurationChanged !== undefined && typeof onConfigurationChanged !== 'function') throw new TypeError('onConfigurationChanged must be a function');
   if (onEvent !== undefined && typeof onEvent !== 'function') throw new TypeError('onEvent must be a function');
+  if (onGlobalShortcutActivation !== undefined && typeof onGlobalShortcutActivation !== 'function') throw new TypeError('onGlobalShortcutActivation must be a function');
   const subscribedEvents = events === undefined ? [] : validateHostEvents(events);
   if (subscribedEvents.length && !onEvent) throw new TypeError('events requires onEvent');
   const rpcError = (message, code, data) => Object.assign(new Error(message), { code, data });
@@ -1082,6 +1157,17 @@ export function start(createActions, {
         send({ id: request.id, result: {} });
         Promise.resolve().then(() => onEvent(event, request.params?.data ?? null, { host: adaptedHost }))
           .catch(() => { process.stderr.write('Plugin event handler failed\n'); });
+        return;
+      }
+      if (request.method === 'plugin.globalShortcut.activation') {
+        if (!initialized || !onGlobalShortcutActivation) throw rpcError('Global shortcut activations are not handled', -32601);
+        const id = request.params?.id;
+        const token = request.params?.token;
+        if (typeof id !== 'string' || !id || typeof token !== 'string' || !token) throw rpcError('Invalid global shortcut activation parameters', -32602);
+        // Acknowledge first: the host waits briefly and never for the handler.
+        send({ id: request.id, result: {} });
+        Promise.resolve().then(() => onGlobalShortcutActivation(id, token, { host: adaptedHost }))
+          .catch(() => { process.stderr.write('Plugin global shortcut activation handler failed\n'); });
         return;
       }
       if (request.method === 'plugin.configuration.changed') {

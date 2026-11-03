@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { start } from '../lib/runtime.mjs';
+import { createContextAPI, createDecorationsAPI, createNotificationsAPI, start } from '../lib/runtime.mjs';
 import { formatMcdemo } from './format.mjs';
 import { KEYWORDS, MAX_LINE_LENGTH, lintMcdemo } from './lint.mjs';
 import { discoverTests, languageFeature, runTests, treeChildren } from './providers.mjs';
@@ -13,6 +13,7 @@ const invalid = message => Object.assign(new Error(message), { code: -32602 });
 const isLine = value => Number.isSafeInteger(value) && value >= 1;
 
 const LINTER_TRIGGERS = new Set(['open', 'save', 'type']);
+const LANGUAGE_FEATURES = new Set(['hover', 'completion', 'definition', 'documentSymbol']);
 const MAX_PACKAGE_JSON_BYTES = 1024 * 1024;
 const MAX_DETECTED_TASKS = 64;
 const SCRIPT_NAME = /^[A-Za-z0-9][A-Za-z0-9:._@/-]{0,63}$/;
@@ -41,6 +42,69 @@ const SEARCH_ITEMS = [
   },
 ];
 
+// Data providers (host 0.3.0). The host calls each of these read actions
+// only after a user action (expanding the session source, opening a session,
+// pressing Plugin Generate, expanding a folder), builds the payload itself and
+// re-validates every result: text is shown as plain text, never Markdown or
+// HTML. The entry IDs below match plugin.json.
+const DATA_PROVIDER_ID = 'showcase';
+const SESSIONS_MAX = 200; // sessionSources limits.sessionsMax
+const MESSAGES_MAX = 200; // sessionSources limits.messagesMax
+const SESSION_ROLES = new Set(['user', 'assistant', 'system', 'tool']);
+const LOG_MAX = 1000;
+
+// Three demo sessions shown while this plugin's storage holds none. A real
+// session source reads its own storage or its own service: never another
+// tool's session folders (~/.claude, ~/.codex, …).
+function demoSessions(language) {
+  const zhText = language === 'zh';
+  const at = (day, hour) => Date.UTC(2026, 10, day, hour, 0, 0);
+  return [
+    {
+      id: 'demo-welcome',
+      title: zhText ? '欢迎使用插件会话来源' : 'Welcome to plugin session sources',
+      model: 'showcase-demo',
+      lastAt: at(1, 9),
+      messages: [
+        { role: 'user', text: zhText ? '这个来源从哪里读会话？' : 'Where does this source read sessions from?', timestamp: at(1, 8) },
+        { role: 'assistant', model: 'showcase-demo', timestamp: at(1, 9),
+          text: zhText ? '从插件自己的存储（host.storage 的 sessions 键）读取；没有存储时显示这三个示例。MinCode 只在你展开来源时列出会话，点击会话时才读取消息。'
+            : 'From the plugin\'s own storage (the sessions key of host.storage), or these three demos when nothing is stored. MinCode lists sessions only when you expand the source and reads messages only when you open a session.' },
+      ],
+    },
+    {
+      id: 'demo-plain-text',
+      title: zhText ? '消息只按纯文本显示' : 'Messages are plain text',
+      model: 'showcase-demo',
+      lastAt: at(2, 14),
+      messages: [
+        { role: 'user', text: zhText ? '能显示粗体和链接吗？' : 'Can a message show bold text and links?', timestamp: at(2, 13) },
+        { role: 'assistant', model: 'showcase-demo', timestamp: at(2, 14),
+          text: zhText ? '不能。下面这行原样显示，不会变粗，也不能点击：\n<b>不是粗体</b> [MinCode 插件文档](https://example.com/mincode/plugins)'
+            : 'No. The next line is shown exactly as written, not bold and not clickable:\n<b>not bold</b> [MinCode plugin docs](https://example.com/mincode/plugins)' },
+      ],
+    },
+    {
+      id: 'demo-read-only',
+      title: zhText ? '插件会话只读' : 'Plugin sessions are read only',
+      lastAt: at(3, 18),
+      messages: [
+        { role: 'system', text: zhText ? '插件会话不能在终端中继续、改名或删除，也没有深度链接。' : 'Plugin sessions cannot be resumed in a terminal, renamed or deleted, and have no deep links.', timestamp: at(3, 18) },
+      ],
+    },
+  ];
+}
+
+async function readSessions(host, language) {
+  const stored = await host('host.storage.get', { key: 'sessions' });
+  return Array.isArray(stored) ? stored : demoSessions(language);
+}
+
+async function logLine(host, message) {
+  const text = message.length > LOG_MAX ? `${message.slice(0, LOG_MAX - 1)}…` : message;
+  await host('host.log', { level: 'info', message: text }).catch(() => {});
+}
+
 function groupFor(name) {
   if (/^(build|compile|bundle)/.test(name)) return 'build';
   if (/^test/.test(name)) return 'test';
@@ -55,6 +119,44 @@ async function readCounter(host) {
   const count = value === null ? 0 : value;
   if (!Number.isSafeInteger(count) || count < 0) throw new Error('Stored counter must be a non-negative safe integer');
   return count;
+}
+
+async function writeStorage(host, key, value) {
+  if (await host('host.storage.set', { key, value }) !== true) throw new Error(`Host did not confirm ${key} storage`);
+}
+
+async function readDemo(host) {
+  return await host('host.storage.get', { key: 'demo' }) === true;
+}
+
+// Notification buttons (host.notify `actions`, host 0.3.0; older hosts ignore
+// them and still show the notification). At most 2, titles of at most 24
+// characters, commands of this plugin only and without arguments. MinCode
+// runs a non-read command only after a confirmation that names the plugin and
+// the command's manifest title, never the button text, so "Reset" below is
+// confirmed as "Process Showcase: Reset Counter".
+const NOTIFICATION_ACTIONS = [
+  { id: 'show', title: 'Show / 查看', command: 'contributions-process-showcase.show' },
+  { id: 'reset', title: 'Reset… / 重置…', command: 'contributions-process-showcase.reset' },
+];
+const NOTIFY_DELAYS = new Set([0, 5]);
+
+// host.notify fails with -32602 for an invalid button (nothing is posted) and
+// with -32005 beyond 10 per minute; the demo logs it and keeps going.
+async function postDemoNotification(host) {
+  const [count, demo] = [await readCounter(host), await readDemo(host)];
+  try {
+    return await createNotificationsAPI(host).notify({
+      title: demo ? 'Demo mode on / 演示模式已开启' : 'Demo mode off / 演示模式已关闭',
+      body: `Counter / 计数：${count}`,
+      level: 'info',
+      viewId: 'settings',
+      actions: NOTIFICATION_ACTIONS,
+    });
+  } catch (error) {
+    await host('host.log', { level: 'warn', message: `host.notify failed (${error?.code ?? 'error'}): ${error?.message ?? error}` }).catch(() => {});
+    return null;
+  }
 }
 
 start(host => ({
@@ -208,14 +310,19 @@ start(host => ({
     return treeChildren(payload);
   },
 
-  // Language features (contributes.languageFeatures): hover and completion for
-  // mcdemo. The host sends {provider, feature, languageId, fileName, text,
-  // startLine, position, locale, ...}; results are shown as plain text.
+  // Language features (contributes.languageFeatures): hover, completion,
+  // definition and documentSymbol for mcdemo, all from one read action. The
+  // host sends {provider, feature, languageId, fileName, text, startLine,
+  // position?, locale, ...}: position for hover, completion and definition;
+  // documentSymbol gets the whole document and no position. The host
+  // re-validates every result and renders it as plain text. Definitions stay
+  // in this document (no `path`), so they need no workspace.read.
   async 'language.mcdemo'(payload) {
-    const { provider, feature, text, position } = payload ?? {};
+    const { provider, feature, text, startLine, position } = payload ?? {};
     if (provider !== 'mcdemo') throw invalid('unknown language feature provider');
-    if (feature !== 'hover' && feature !== 'completion') throw invalid('feature must be hover or completion');
-    if (typeof text !== 'string' || !isLine(position?.line) || !isLine(position?.column)) throw invalid('text and position are required');
+    if (!LANGUAGE_FEATURES.has(feature)) throw invalid('feature must be hover, completion, definition or documentSymbol');
+    if (typeof text !== 'string' || !isLine(startLine)) throw invalid('text and startLine are required');
+    if (feature !== 'documentSymbol' && (!isLine(position?.line) || !isLine(position?.column))) throw invalid('position is required');
     return languageFeature(payload);
   },
 
@@ -230,6 +337,142 @@ start(host => ({
     if (payload?.provider !== 'mcdemo') throw invalid('unknown test provider');
     if (!Array.isArray(payload.tests) || !payload.tests.every(id => typeof id === 'string')) throw invalid('tests must be a list of ids');
     return runTests(payload);
+  },
+
+  // Session source (contributes.sessionSources). One read action answers both
+  // requests: {source, request: "list", scope: "workspace" | "all",
+  // project?: {name, root?}, locale} => {sessions} and {source, request:
+  // "messages", session, locale} => {messages}. `project` comes only with the
+  // workspace scope (root only with workspace.read). The host keeps at most
+  // 200 sessions and the last 200 messages, drops invalid items and shows
+  // every text as plain text.
+  async 'sessions.read'(payload) {
+    const { source, request, scope, project, session, locale } = payload ?? {};
+    if (source !== DATA_PROVIDER_ID) throw invalid('unknown session source');
+    const language = zh(locale) ? 'zh' : 'en';
+    if (request === 'list') {
+      if (scope !== 'workspace' && scope !== 'all') throw invalid('scope must be workspace or all');
+      await logLine(host, `sessions.read list scope=${scope}${project?.name ? ` project=${project.name}` : ''}`);
+      const where = scope === 'workspace'
+        ? (language === 'zh' ? `工作区项目 ${project?.name ?? ''}` : `Workspace project ${project?.name ?? ''}`)
+        : (language === 'zh' ? '全部' : 'All');
+      const sessions = (await readSessions(host, language))
+        .filter(item => item && typeof item.id === 'string')
+        .sort((a, b) => (b.lastAt ?? 0) - (a.lastAt ?? 0))
+        .slice(0, SESSIONS_MAX)
+        .map(item => ({
+          id: item.id,
+          title: singleLine(item.title ?? '', 200),
+          detail: singleLine(item.detail ?? where, 200),
+          ...(item.model ? { model: singleLine(item.model, 64) } : {}),
+          ...(Number.isSafeInteger(item.lastAt) ? { lastAt: item.lastAt } : {}),
+          messageCount: Array.isArray(item.messages) ? item.messages.length : 0,
+        }));
+      return { sessions };
+    }
+    if (request === 'messages') {
+      if (typeof session !== 'string') throw invalid('session must be a string');
+      await logLine(host, `sessions.read messages session=${session}`);
+      const found = (await readSessions(host, language)).find(item => item?.id === session);
+      if (!found) throw invalid('unknown session');
+      const messages = (Array.isArray(found.messages) ? found.messages : [])
+        .filter(message => SESSION_ROLES.has(message?.role) && typeof message.text === 'string')
+        .slice(-MESSAGES_MAX)
+        .map(({ role, text, timestamp, model }) => ({
+          role, text,
+          ...(Number.isSafeInteger(timestamp) ? { timestamp } : {}),
+          ...(typeof model === 'string' && model ? { model: singleLine(model, 64) } : {}),
+        }));
+      return { messages };
+    }
+    throw invalid('request must be list or messages');
+  },
+
+  // Commit message provider (contributes.scmCommitMessage). Runs only when
+  // the user presses Plugin Generate in the Git panel. The host sends {provider,
+  // repository: {name}, branch?, files: [{path, status, oldPath?}],
+  // omittedFiles, diff, truncated, filesTruncated, locale}: staged changes
+  // only, without .env-like files (counted in omittedFiles, names never
+  // sent), diff cut to 64 KiB. The result {message} only fills the draft;
+  // MinCode never commits it.
+  async 'commit.draft'(payload) {
+    const { provider, repository, files, omittedFiles, truncated } = payload ?? {};
+    if (provider !== DATA_PROVIDER_ID) throw invalid('unknown commit message provider');
+    if (!Array.isArray(files) || !files.every(file => typeof file?.path === 'string' && typeof file.status === 'string')) {
+      throw invalid('files must be a list of {path, status}');
+    }
+    await logLine(host, `commit.draft repository=${repository?.name ?? ''} files=${files.map(file => file.path).join(', ') || '-'} omitted=${omittedFiles ?? 0} diffTruncated=${truncated === true}`);
+    const counts = new Map();
+    for (const file of files) counts.set(file.status, (counts.get(file.status) ?? 0) + 1);
+    const subject = files.length
+      ? `chore(showcase): update ${files.length} ${files.length === 1 ? 'file' : 'files'}`
+      : 'chore(showcase): update files';
+    const body = [...counts].map(([status, count]) => `- ${count} ${status}`).join('\n');
+    return { message: body ? `${subject}\n\n${body}` : subject };
+  },
+
+  // File decoration provider (contributes.fileDecorations). The host asks for
+  // one folder at a time: {provider, project: {name, root}, directory ("" is
+  // the project root), names, locale}; sensitive names (.env, …) are never
+  // sent. Answer only for names in the request (others are dropped): a badge
+  // of 1-2 characters and/or a colour token (accent, success, warning,
+  // danger, info, muted), never a CSS colour. The TODO marker has no tooltip
+  // on purpose: MinCode then names the colour for screen readers ("Warning").
+  async 'decorations.read'(payload) {
+    const { provider, directory, names, locale } = payload ?? {};
+    if (provider !== DATA_PROVIDER_ID) throw invalid('unknown file decoration provider');
+    if (typeof directory !== 'string') throw invalid('directory must be a string');
+    if (!Array.isArray(names) || !names.every(name => typeof name === 'string')) throw invalid('names must be a list of strings');
+    await logLine(host, `decorations.read directory="${directory}" names=${names.length}: ${names.join(', ')}`);
+    const markdown = zh(locale) ? 'Markdown 文档' : 'Markdown document';
+    const decorations = {};
+    for (const name of names) {
+      if (/^TODO(\.[^.]*)?$/i.test(name)) decorations[name] = { color: 'warning' };
+      else if (/\.md$/i.test(name)) decorations[name] = { badge: 'M', color: 'info', tooltip: markdown };
+    }
+    return { decorations };
+  },
+
+  // Command Process Showcase: Refresh File Markers. host.decorations.refresh
+  // (host 0.3.0) carries no data: MinCode re-requests the folders it shows,
+  // at most once every 2 seconds per plugin ({scheduled: false} otherwise).
+  // It needs workspace.read and a fileDecorations entry; older hosts answer
+  // -32601, which the SDK turns into {scheduled: false}.
+  async 'decorations.refresh'() {
+    return createDecorationsAPI(host).refresh();
+  },
+
+  // Tray and palette command (write): flips demo mode, publishes it as the
+  // context key showcase.demo (usable in a command `when`; context is
+  // cleared whenever the process stops) and posts a notification with buttons.
+  async toggle() {
+    const demo = !(await readDemo(host));
+    await writeStorage(host, 'demo', demo);
+    await createContextAPI(host).set('showcase.demo', demo);
+    const notified = await postDemoNotification(host);
+    return { demo, notified: notified !== null };
+  },
+
+  // Dangerous command behind the notification's Reset button.
+  async reset() {
+    await writeStorage(host, 'counter', 0);
+    return { count: 0 };
+  },
+
+  // Settings page (contributes.settingsPages): read-only state for display.
+  async 'settings.state'() {
+    return { count: await readCounter(host), demo: await readDemo(host) };
+  },
+
+  // Settings page button. A 5-second delay leaves time to switch to another
+  // app: MinCode in the background also shows a system notification, which
+  // never has buttons.
+  async 'notify.demo'(payload) {
+    const delaySeconds = payload.delaySeconds ?? 0;
+    if (!NOTIFY_DELAYS.has(delaySeconds)) throw invalid('delaySeconds must be 0 or 5');
+    if (delaySeconds === 0) await postDemoNotification(host);
+    else setTimeout(() => { postDemoNotification(host).catch(() => {}); }, delaySeconds * 1000).unref();
+    return { scheduled: true, delaySeconds };
   },
 
   // Read command behind the `demo:` search result and the
@@ -251,6 +494,13 @@ start(host => ({
   },
 }), {
   hostTimeoutMs: 5_000,
+  // The SDK runs one action at a time. The editor asks for the outline
+  // (documentSymbol) on its own while the user hovers or presses F12, and the
+  // linter runs while typing, so the pure language action may overlap them
+  // instead of answering busy.
+  // The data provider actions are read-only as well: the project tree asks
+  // for decorations while the linter or the outline may be running.
+  concurrentActions: ['language.mcdemo', 'sessions.read', 'commit.draft', 'decorations.read'],
   allowNullPayload: true,
   strictPayloadString: true,
   errors: { timeout: 'Host request timed out', busy: 'An action is already running' },

@@ -9,8 +9,8 @@ export interface HostContext {
   themeKind?: 'light' | 'dark';
   /** Validated `--app-*` tokens of a contributed theme; applied automatically. */
   themeTokens?: Record<string, string>;
-  /** Where the host embeds the page. */
-  surface?: 'workspace' | 'document' | 'widget' | 'floating';
+  /** Where the host embeds the page; 'settings' is a contributes.settingsPages page under Settings > Plugins (host 0.3.0). */
+  surface?: 'workspace' | 'document' | 'widget' | 'floating' | 'settings';
   [key: string]: unknown;
 }
 
@@ -131,7 +131,10 @@ export interface AiConfigApplyResult {
 }
 
 export interface TransportOptions {
-  /** Host waits for this acknowledgement before closing or popping out a workspace tab. Reject to keep it open. Not an OS shutdown guarantee. */
+  /**
+   * Host waits for this acknowledgement before closing or popping out a workspace tab. Reject to keep it open. Not an OS shutdown guarantee.
+   * Never called on a settings page (surface 'settings'): it has no tab, so the host does not offer view saves there.
+   */
   onSave?(): Promise<void>;
   onReady(): void;
   onError(message: string): void;
@@ -219,7 +222,7 @@ export interface Transport {
   pickPath(kind: 'file' | 'directory', options?: { multiple?: false; extensions?: string[] }): Promise<string | null>;
   pickPath(kind: 'file', options: { multiple: true; extensions?: string[] }): Promise<string[] | null>;
   close(): void;
-  surface(): 'workspace' | 'document' | 'widget' | 'floating';
+  surface(): 'workspace' | 'document' | 'widget' | 'floating' | 'settings';
   /**
    * features.visibility: false while the host hides this page (an inactive tab, or a closed tab the host
    * keeps warm for a fast reopen). Always true on hosts without the feature. Advisory: pause timers and polling.

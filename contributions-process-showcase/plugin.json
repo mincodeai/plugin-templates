@@ -5,10 +5,10 @@
   "id": "contributions-process-showcase",
   "name": "Process Contributions Showcase",
   "version": "0.1.0",
-  "description": "A dependency-free Node process plugin template showing a formatter, a linter, a language server, hover and completion, a sidebar tree view, a test provider, tasks, command-palette search, an AI context provider, AI catalogs, a deep link, a dashboard data widget and a walkthrough step that runs a command.",
+  "description": "A dependency-free Node process plugin template showing a formatter, a linter, a language server, hover, completion, go to definition and an outline, a sidebar tree view, a test provider, tasks, command-palette search, an AI context provider, AI catalogs, a deep link, a dashboard data widget, a walkthrough step that runs a command, a settings page, two tray menu items, notification buttons, an AI session source, a commit message draft and file markers in the project tree.",
   "author": "Your Name",
   "platforms": ["darwin", "linux", "windows"],
-  "capabilities": ["commands", "ui", "storage", "shell", "workspace.read"],
+  "capabilities": ["commands", "ui", "storage", "shell", "workspace.read", "notifications"],
   "runtime": {
     "type": "process",
     "entry": "bin/plugin.mjs",
@@ -35,8 +35,63 @@
         "action": "show",
         "payload": "",
         "risk": "read"
+      },
+      {
+        "id": "contributions-process-showcase.toggle",
+        "title": "Process Showcase: Toggle Demo Mode",
+        "titleLocalized": { "zh": "进程示例：切换演示模式", "en": "Process Showcase: Toggle Demo Mode" },
+        "description": "Turn demo mode on or off and post a notification with a Show and a Reset button. Also in the system tray menu.",
+        "keywords": ["example", "tray", "notification"],
+        "action": "toggle",
+        "payload": "",
+        "risk": "write"
+      },
+      {
+        "id": "contributions-process-showcase.reset",
+        "title": "Process Showcase: Reset Counter",
+        "titleLocalized": { "zh": "进程示例：重置计数器", "en": "Process Showcase: Reset Counter" },
+        "description": "Set the counter back to 0. Declared dangerous so that a notification button or tray item running it asks first.",
+        "keywords": ["example", "counter"],
+        "action": "reset",
+        "payload": "",
+        "risk": "dangerous"
+      },
+      {
+        "id": "contributions-process-showcase.openSettings",
+        "title": "Process Showcase: Open Settings Page",
+        "titleLocalized": { "zh": "进程示例：打开设置页面", "en": "Process Showcase: Open Settings Page" },
+        "description": "Open the settings page as a tab. Also in the system tray menu.",
+        "keywords": ["example", "settings"],
+        "target": { "type": "view", "viewId": "settings" }
+      },
+      {
+        "id": "showcase.refreshDecorations",
+        "title": "Process Showcase: Refresh File Markers",
+        "titleLocalized": { "zh": "进程示例：刷新文件标记", "en": "Process Showcase: Refresh File Markers" },
+        "description": "Ask MinCode to request the file markers of the open project tree folders again (host.decorations.refresh; at most once every 2 seconds, sends no data).",
+        "keywords": ["example", "decorations", "markers"],
+        "action": "decorations.refresh",
+        "payload": "",
+        "risk": "read"
       }
     ],
+    "views": [
+      {
+        "id": "settings",
+        "title": "Process Showcase settings",
+        "titleLocalized": { "zh": "进程示例设置", "en": "Process Showcase settings" },
+        "entry": "ui/settings.html"
+      }
+    ],
+    "settingsPages": [
+      { "id": "main", "view": "settings", "title": "Demo settings", "titleLocalized": { "zh": "示例设置" } }
+    ],
+    "menus": {
+      "tray": [
+        { "command": "contributions-process-showcase.toggle", "group": "demo", "order": 1 },
+        { "command": "contributions-process-showcase.openSettings", "group": "demo", "order": 2 }
+      ]
+    },
     "actions": [
       {
         "id": "format",
@@ -55,6 +110,18 @@
         "risk": "read",
         "maxPayloadBytes": 1024,
         "description": "Read the counter: {} => {count, message}. Backs the Show Counter command, demo: search and the /counter/show deep link."
+      },
+      {
+        "id": "settings.state",
+        "risk": "read",
+        "maxPayloadBytes": 1024,
+        "description": "Settings page data: {} => {count, demo}."
+      },
+      {
+        "id": "notify.demo",
+        "risk": "read",
+        "maxPayloadBytes": 1024,
+        "description": "Settings page button: {delaySeconds?: 0 | 5} => {scheduled, delaySeconds}; posts a notification with a Show and a Reset button now or after 5 seconds."
       },
       {
         "id": "lint",
@@ -118,7 +185,7 @@
         "maxPayloadBytes": 81920,
         "uiCallable": false,
         "aiCallable": false,
-        "description": "mcdemo hover and completion: {provider, feature, text, startLine, position, locale, ...} => {contents} or {items}."
+        "description": "mcdemo language features: {provider, feature, text, startLine, position?, locale, ...} => hover {contents}, completion {items}, definition {locations} (the task line in this document) or documentSymbol {symbols} (tasks and their when blocks)."
       },
       {
         "id": "tests.discover",
@@ -135,6 +202,30 @@
         "uiCallable": false,
         "aiCallable": false,
         "description": "Simulated mcdemo test run: {provider, locale, project, tests} => {results, output}. Only reads files, but declared write like a real test runner so the host asks for confirmation."
+      },
+      {
+        "id": "sessions.read",
+        "risk": "read",
+        "maxPayloadBytes": 4096,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "Session source: {source, request: \"list\", scope, project?, locale} => {sessions} (newest first, at most 200) or {source, request: \"messages\", session, locale} => {messages}. Sessions come from this plugin's own storage (three built-in demo sessions when nothing is stored)."
+      },
+      {
+        "id": "commit.draft",
+        "risk": "read",
+        "maxPayloadBytes": 196608,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "Commit message provider: {provider, repository, branch?, files, omittedFiles, diff, truncated, filesTruncated, locale} => {message}; builds chore(showcase): update N files from the file statuses."
+      },
+      {
+        "id": "decorations.read",
+        "risk": "read",
+        "maxPayloadBytes": 163840,
+        "uiCallable": false,
+        "aiCallable": false,
+        "description": "File decoration provider: {provider, project, directory, names, locale} => {decorations}; marks .md files with an info M badge and TODO files with a warning dot, only among the names asked for."
       }
     ],
     "formatters": [
@@ -249,10 +340,10 @@
     "languageFeatures": [
       {
         "id": "mcdemo",
-        "title": "MinCode Demo hover and completion",
-        "titleLocalized": { "zh": "MinCode Demo 悬停与补全" },
+        "title": "MinCode Demo language features",
+        "titleLocalized": { "zh": "MinCode Demo 语言功能" },
         "languages": ["mcdemo"],
-        "features": ["hover", "completion"],
+        "features": ["hover", "completion", "definition", "documentSymbol"],
         "action": "language.mcdemo"
       }
     ],
@@ -263,6 +354,31 @@
         "titleLocalized": { "zh": "mcdemo 任务" },
         "discoverAction": "tests.discover",
         "runAction": "tests.run"
+      }
+    ],
+    "sessionSources": [
+      {
+        "id": "showcase",
+        "title": "Showcase sessions",
+        "titleLocalized": { "zh": "示例会话" },
+        "icon": "magic",
+        "action": "sessions.read"
+      }
+    ],
+    "scmCommitMessage": [
+      {
+        "id": "showcase",
+        "title": "Showcase draft",
+        "titleLocalized": { "zh": "示例提交信息" },
+        "action": "commit.draft"
+      }
+    ],
+    "fileDecorations": [
+      {
+        "id": "showcase",
+        "title": "Showcase markers",
+        "titleLocalized": { "zh": "示例标记" },
+        "action": "decorations.read"
       }
     ],
     "dashboardWidgets": [

@@ -94,6 +94,16 @@ export declare function createStatusBarAPI(host: HostCall): {
   reset(id?: string): Promise<unknown>;
 };
 
+/**
+ * File decorations (contributes.fileDecorations, capability `workspace.read`, host 0.3.0).
+ * refresh() is a data-free hint: the project tree re-requests this plugin's decorations for
+ * the directories it shows, at most once every 2 s per plugin. Resolves `{ scheduled: false }`
+ * when rate limited, on hosts without the method, or when the plugin declares no fileDecorations.
+ */
+export declare function createDecorationsAPI(host: HostCall): {
+  refresh(): Promise<{ scheduled: boolean }>;
+};
+
 // ---- shell (capability `shell`) ----
 
 export interface ShellResult {
@@ -115,8 +125,15 @@ export declare function createClipboardAPI(host: HostCall): {
   write(text: string): Promise<unknown>;
 };
 
+/**
+ * A notification button (host 0.3.0; older hosts ignore `actions`). At most 2 per
+ * notification; `id` matches /^[A-Za-z0-9._-]{1,32}$/ and is unique, `title` is one
+ * line of at most 24 characters, `command` is one of this plugin's commands (no arguments).
+ */
+export interface NotificationAction { id: string; title: string; command: string }
+
 export declare function createNotificationsAPI(host: HostCall): {
-  notify(notification: { title: string; body?: string; level?: 'info' | 'success' | 'warning' | 'error'; system?: boolean; viewId?: string }): Promise<unknown>;
+  notify(notification: { title: string; body?: string; level?: 'info' | 'success' | 'warning' | 'error'; system?: boolean; viewId?: string; actions?: NotificationAction[] }): Promise<unknown>;
 };
 
 export interface AITurnRequest {
@@ -163,6 +180,37 @@ export declare function createHostAPI(host: HostCall): {
   describe(): Promise<HostDescription>;
   log(level: 'debug' | 'info' | 'warn' | 'error', message: string): Promise<unknown>;
 };
+
+/** host.view.open (capability `ui`). */
+export interface ViewOpenRequest {
+  viewId: string;
+  /** Another plugin's view; not allowed with raise. */
+  pluginId?: string;
+  /** With entry the page receives an open request carrying params. */
+  entry?: string;
+  /** Strings, numbers and booleans only; at most 16 keys. */
+  params?: Record<string, string | number | boolean>;
+  /**
+   * Also bring the main window to the front, on the plugin's own tab view. Needs activation;
+   * the host refuses an invalid token with error.data.code "activation_invalid", and any raise while MinCode is locked with "locked".
+   */
+  raise?: boolean;
+  /** Single-use token from onGlobalShortcutActivation (valid 120 s). Only with raise. */
+  activation?: string;
+}
+
+export declare function createViewsAPI(host: HostCall): {
+  open(request: ViewOpenRequest): Promise<{ requested: boolean; raised?: boolean }>;
+};
+
+/** What started an action; a global shortcut press adds { trigger: { type: "globalShortcut", id } } to its payload. */
+export interface Trigger {
+  type: string;
+  id: string;
+}
+
+/** Reads the trigger of an action payload (object or JSON text); null when there is none. */
+export declare function triggerFrom(payload: unknown): Trigger | null;
 
 // ---- workspace files (capabilities `workspace.read` / `workspace.write`) ----
 
@@ -266,6 +314,13 @@ export interface ServiceRequest {
   files?: ServiceFile[];
   params: Record<string, unknown>;
   caller: { kind: 'plugin'; pluginId: string } | { kind: 'host'; surface: string };
+  /**
+   * Extra context of the newer host surfaces (host 0.3.0: sftpFile, dbResult,
+   * httpResponse, terminalSelection), trimmed by the host to the provider's
+   * capabilities (remote identifiers need remote.context, database names
+   * database.schema). Absent for plugin callers and the older surfaces.
+   */
+  surfaceContext?: Record<string, unknown>;
 }
 export declare function decodeServiceRequest(payload: unknown): ServiceRequest;
 
@@ -298,6 +353,14 @@ export interface StartOptions<H = HostCall> {
   /** Subscribed right after initialize; requires onEvent. */
   events?: HostEvent[];
   onEvent?: <E extends HostEvent>(event: E, data: HostEventData[E], context: { host: H }) => unknown;
+  /**
+   * Runs after one of the plugin's global shortcut actions finished (successfully or not), once the
+   * host got its ack. token is single-use and valid for 120 s: pass it to
+   * createViewsAPI(host).open({ viewId, raise: true, activation: token }). Without it the request answers -32601.
+   * The host does not idle-stop an on-demand plugin while it holds an unspent token; a stop, disable,
+   * reload or crash still revokes it.
+   */
+  onGlobalShortcutActivation?: (id: string, token: string, context: { host: H }) => unknown;
   /** Reported in the initialize result so the host can reject an entry of another plugin; keep equal to plugin.json. */
   plugin?: { id: string; version?: string };
   /** plugin.call methods views call with transport.request(method, params). View-only: no risk confirmation, never offered to AI. */

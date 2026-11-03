@@ -27,8 +27,9 @@ export function createTransport({ onReady, onError, applyContext, onFilesDropped
   const methodPattern = /^[A-Za-z][A-Za-z0-9_]*(?:[./:-][A-Za-z0-9_]+)*$/;
   const message = (zh, en) => locale === 'zh' ? zh : en;
   const viewIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-  // Where the host embeds this page: a workspace tab, a custom-editor document, a dashboard widget card or a floating window.
-  const surfaces = ['workspace', 'document', 'widget', 'floating'];
+  // Where the host embeds this page: a workspace tab, a custom-editor document, a dashboard widget card, a floating window
+  // or Settings > Plugins (contributes.settingsPages). Older transports fall back to 'workspace' for 'settings'.
+  const surfaces = ['workspace', 'document', 'widget', 'floating', 'settings'];
   let surface = 'workspace';
   function context(value) {
     locale = value?.locale ?? locale;

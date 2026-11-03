@@ -1,0 +1,219 @@
+/* Generated from vue-app/src/styles/foundation/foundation.css by sync-plugin-ui.mjs; do not edit. */
+:root {
+  color-scheme: light;
+  --app-ui-font-size: 13px;
+  --app-ui-font-size-small: calc(var(--app-ui-font-size) - 1px);
+  --app-ui-font-size-extra-small: calc(var(--app-ui-font-size) - 2px);
+  --app-ui-font-size-large: calc(var(--app-ui-font-size) + 1px);
+  --app-ui-viewport-width: 100vw;
+  --app-ui-viewport-height: 100vh;
+  --app-ui-overlay-scale: 1;
+  --app-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+  font-family: var(--app-font-sans);
+  font-synthesis: none;
+  color: var(--app-text);
+  --app-canvas: #ffffff;
+  --app-surface: #ffffff;
+  --app-sidebar: #ffffff;
+  --app-border: #f0f0f0;
+  --app-border-strong: #d9d9d9;
+  --app-muted: #ffffff;
+  --app-hover: #f5f5f5;
+  --app-accent: #5d87ff;
+  --app-accent-rgb: 93, 135, 255;
+  --app-accent-hover: #7c9eff;
+  --app-accent-soft: #eef2ff;
+  --app-text: #1f1f1f;
+  --app-text-muted: #737373;
+  --app-text-disabled: #bfbfbf;
+  --app-text-on-accent: #ffffff;
+  --app-top-tabs-height: 40px;
+  --app-activity-rail-width: 56px;
+  --app-activity-rail-labels-width: 72px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-canvas: #17191f;
+  --app-surface: #20232b;
+  --app-sidebar: #1b1e25;
+  --app-border: #363b46;
+  --app-border-strong: #4b5260;
+  --app-muted: #292d36;
+  --app-hover: #303540;
+  --app-accent: #7c9eff;
+  --app-accent-rgb: 124, 158, 255;
+  --app-accent-hover: #9db6ff;
+  --app-accent-soft: #2a3554;
+  --app-text: #edf0f7;
+  --app-text-regular: #c5cad5;
+  --app-text-muted: #98a1b3;
+  --app-text-disabled: #6f7889;
+  --app-text-on-accent: #111827;
+}
+
+:root[data-theme="graphite"] {
+  color-scheme: dark;
+  --app-canvas: #202124;
+  --app-surface: #292a2d;
+  --app-sidebar: #252629;
+  --app-border: #414246;
+  --app-border-strong: #57585d;
+  --app-muted: #313236;
+  --app-hover: #38393d;
+  --app-accent: #a8c7fa;
+  --app-accent-rgb: 168, 199, 250;
+  --app-accent-hover: #c2d7ff;
+  --app-accent-soft: #334157;
+  --app-text: #e8eaed;
+  --app-text-regular: #c4c7c5;
+  --app-text-muted: #aeb4bc;
+  --app-text-disabled: #82888f;
+  --app-text-on-accent: #111827;
+}
+
+:root[data-theme="midnight"] {
+  color-scheme: dark;
+  --app-canvas: #0b1220;
+  --app-surface: #101a2d;
+  --app-sidebar: #0d1728;
+  --app-border: #23334d;
+  --app-border-strong: #354866;
+  --app-muted: #16243a;
+  --app-hover: #1d2d46;
+  --app-accent: #38bdf8;
+  --app-accent-rgb: 56, 189, 248;
+  --app-accent-hover: #7dd3fc;
+  --app-accent-soft: #12344e;
+  --app-text: #e0f2fe;
+  --app-text-regular: #b9d4e6;
+  --app-text-muted: #89a8be;
+  --app-text-disabled: #5f7d93;
+  --app-text-on-accent: #111827;
+}
+
+:root[data-theme="paper"] {
+  color-scheme: light;
+  --app-canvas: #f4f0e8;
+  --app-surface: #fffdf8;
+  --app-sidebar: #faf5ea;
+  --app-border: #ded5c4;
+  --app-border-strong: #cbbda6;
+  --app-muted: #f7f1e6;
+  --app-hover: #efe6d5;
+  --app-accent: #9a5b22;
+  --app-accent-rgb: 154, 91, 34;
+  --app-accent-hover: #b36f31;
+  --app-accent-soft: #f8e6d3;
+  --app-text: #30271f;
+  --app-text-regular: #5f5145;
+  --app-text-muted: #8b7a6c;
+  --app-text-disabled: #a89a8c;
+}
+
+:root[data-theme="cloud-blue"] {
+  color-scheme: light;
+  --app-canvas: #eef3fa;
+  --app-surface: #fbfdff;
+  --app-sidebar: #f7faff;
+  --app-border: #dce5f2;
+  --app-border-strong: #c8d6e8;
+  --app-muted: #f2f6fc;
+  --app-hover: #eaf2ff;
+  --app-accent: #4d86f7;
+  --app-accent-rgb: 77, 134, 247;
+  --app-accent-hover: #6ca2ff;
+  --app-accent-soft: #e4efff;
+  --app-text: #213047;
+  --app-text-regular: #50617a;
+  --app-text-muted: #8494aa;
+  --app-text-disabled: #a3b1c2;
+}
+
+:root[data-theme="arco"] {
+  color-scheme: light;
+  --app-canvas: #f2f3f5;
+  --app-surface: #ffffff;
+  --app-sidebar: #ffffff;
+  --app-border: #e5e6eb;
+  --app-border-strong: #c9cdd4;
+  --app-muted: #f7f8fa;
+  --app-hover: #f2f3f5;
+  --app-accent: #165dff;
+  --app-accent-rgb: 22, 93, 255;
+  --app-accent-hover: #4080ff;
+  --app-accent-soft: #e8f3ff;
+  --app-text: #1d2129;
+  --app-text-regular: #4e5969;
+  --app-text-muted: #86909c;
+  --app-text-disabled: #a9aeb8;
+}
+
+:root[data-theme="arco-dark"] {
+  color-scheme: dark;
+  --app-canvas: #17171a;
+  --app-surface: #232324;
+  --app-sidebar: #1d1d20;
+  --app-border: #3f3f43;
+  --app-border-strong: #57575d;
+  --app-muted: #2a2a2d;
+  --app-hover: #343438;
+  --app-accent: #3c7eff;
+  --app-accent-rgb: 60, 126, 255;
+  --app-accent-hover: #689fff;
+  --app-accent-soft: #253b63;
+  --app-text: #f2f3f5;
+  --app-text-regular: #c9cdd4;
+  --app-text-muted: #a9aeb8;
+  --app-text-disabled: #7d8492;
+  --app-text-on-accent: #111827;
+}
+
+:root {
+  color: var(--app-text);
+  --app-text-regular: #434343;
+  --app-brand: var(--app-accent);
+  --app-radius-sm: 4px;
+  --app-radius: 8px;
+  --app-radius-lg: 12px;
+  --app-bg: var(--app-canvas);
+  --app-surface-raised: var(--app-surface);
+  --app-surface-sunken: color-mix(in srgb, var(--app-muted) 72%, var(--app-canvas));
+  --app-surface-muted: var(--app-muted);
+  --app-surface-hover: var(--app-hover);
+  --app-border-subtle: color-mix(in srgb, var(--app-border) 62%, var(--app-surface));
+  --app-window-border: var(--app-border-strong);
+  --app-accent-border: color-mix(in srgb, var(--app-accent) 42%, var(--app-border));
+  --app-accent-ring: color-mix(in srgb, var(--app-accent) 28%, transparent);
+  --app-text-strong: var(--app-text);
+  --app-text-secondary: var(--app-text-regular);
+  --app-text-on-status: #ffffff;
+  --app-success: #22a06b;
+  --app-success-soft: color-mix(in srgb, var(--app-success) 10%, var(--app-surface));
+  --app-success-border: color-mix(in srgb, var(--app-success) 32%, var(--app-border));
+  --app-warning: #d9822b;
+  --app-warning-soft: color-mix(in srgb, var(--app-warning) 10%, var(--app-surface));
+  --app-warning-border: color-mix(in srgb, var(--app-warning) 34%, var(--app-border));
+  --app-danger: #d14343;
+  --app-danger-soft: color-mix(in srgb, var(--app-danger) 10%, var(--app-surface));
+  --app-danger-border: color-mix(in srgb, var(--app-danger) 34%, var(--app-border));
+  --app-info: var(--app-accent);
+  --app-info-soft: var(--app-accent-soft);
+  --app-info-border: var(--app-accent-border);
+  --app-code-surface: #11141b;
+  --app-code-surface-strong: #090b10;
+  --app-code-border: #292d38;
+  --app-code-text: #d8dee9;
+  --app-code-text-muted: #9ca3af;
+  --app-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --app-mono-font: var(--app-font-mono);
+}
+
+/* Native scroll areas inside plugin iframes (not covered by host styles). */
+:root { --plugin-scrollbar-thumb: rgba(120, 130, 145, .45); --plugin-scrollbar-hover: rgba(120, 130, 145, .7); }
+* { scrollbar-width: thin; scrollbar-color: var(--plugin-scrollbar-thumb) transparent; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--plugin-scrollbar-thumb); border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--plugin-scrollbar-hover); }
+*::-webkit-scrollbar-corner { background: transparent; }
