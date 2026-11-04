@@ -1,3 +1,4 @@
+import path from 'node:path';
 import readline from 'node:readline';
 
 // Free-form view messages (onUIMessage / postUIMessage).
@@ -344,6 +345,36 @@ export function createDecorationsAPI(host) {
   };
 }
 
+// jdtls commands (contributes.jdtlsBundles, capability `shell`, host 0.3.0).
+// executeCommand sends workspace/executeCommand to the built-in Java language
+// server running for the absolute project folder `root` and resolves its
+// result (null when it returned none). Only commands listed in the plugin's
+// own jdtlsBundles entries are allowed (-32001 otherwise), and only after the
+// user confirmed the plugin's jars and jdtls was (re)started with them; a
+// jdtls that is not running or lacks the jars answers -32000 with a message
+// starting "unavailable:". The host waits at most 60 s and refuses results
+// above 1 MiB (-32603). Hosts without the method (or a plugin without
+// jdtlsBundles) answer -32601, which rejects with code UNSUPPORTED.
+const JDTLS_COMMAND_TIMEOUT_MS = 60_000;
+const JDTLS_REPLY_MARGIN_MS = 5_000;
+
+export function createJdtlsAPI(host) {
+  return {
+    async executeCommand({ root, command, arguments: args } = {}) {
+      if (typeof root !== 'string' || !root || !path.isAbsolute(root)) throw pluginError('INVALID_ARGUMENT', 'jdtls command root must be an absolute path');
+      if (typeof command !== 'string' || !command) throw pluginError('INVALID_ARGUMENT', 'jdtls command is required');
+      if (args !== undefined && !Array.isArray(args)) throw pluginError('INVALID_ARGUMENT', 'jdtls command arguments must be an array');
+      let result;
+      try { result = await host('host.jdtls.executeCommand', { root, command, arguments: args ?? [] }, { timeoutMs: JDTLS_COMMAND_TIMEOUT_MS + JDTLS_REPLY_MARGIN_MS }); }
+      catch (error) {
+        if (error?.code === -32601) throw pluginError('UNSUPPORTED', 'This MinCode host does not support jdtls commands', { cause: error });
+        throw error;
+      }
+      return result ?? null;
+    },
+  };
+}
+
 export function quoteShellArgument(value) {
   const text = String(value);
   if (text.includes('\0')) throw pluginError('INVALID_ARGUMENT', 'Shell argument contains NUL');
@@ -618,8 +649,10 @@ export function createEventsAPI(host) {
 // Services (host.services.*, see the Go SDK host/services.go). Callers need
 // the `plugins` capability; providers need nothing extra. invoke() waits for
 // the result; start() + wait() report progress, cancel() stops a call (not
-// rollback). Inputs: text (a string), or file sources [{ source: 'workspace'
-// | 'storage', path } | { source: 'upload', token }]. File outputs are
+// rollback). interactive: false makes a call that would ask the user fail
+// with SERVICE_ERR_INTERACTION_REQUIRED instead. Inputs: text (a string), or
+// file sources [{ source: 'workspace' | 'storage', path } | { source:
+// 'upload', token }]. File outputs are
 // tokens: files.read / files.save (into the caller's storage) / files.release.
 // A provider's action receives the envelope decodeServiceRequest() reads; it
 // reads inputs with files.read, writes outputs with files.create(callId, ...)
@@ -634,7 +667,8 @@ const SERVICE_SAVE_TIMEOUT_MS = 60_000;
 
 function serviceCallParams(call) {
   if (!call || typeof call !== 'object' || typeof call.service !== 'string' || !call.service) throw pluginError('INVALID_ARGUMENT', 'A service call requires a service');
-  const { service, provider, input, params, timeoutMs, execTimeoutMs } = call;
+  const { service, provider, input, params, timeoutMs, execTimeoutMs, interactive } = call;
+  if (interactive !== undefined && typeof interactive !== 'boolean') throw pluginError('INVALID_ARGUMENT', 'interactive must be a boolean');
   if (input !== undefined && typeof input !== 'string' && !(Array.isArray(input) && input.length > 0)) throw pluginError('INVALID_ARGUMENT', 'Service input must be text or a non-empty list of file sources');
   if (provider !== undefined && (typeof provider?.pluginId !== 'string' || !provider.pluginId)) throw pluginError('INVALID_ARGUMENT', 'provider must be { pluginId, entryId? }');
   if (params !== undefined && (!params || typeof params !== 'object' || Array.isArray(params))) throw pluginError('INVALID_ARGUMENT', 'Service params must be an object');
@@ -642,7 +676,7 @@ function serviceCallParams(call) {
     if (value !== undefined && (!Number.isSafeInteger(value) || value < 1 || value > SERVICE_EXEC_TIMEOUT_MS)) throw pluginError('INVALID_ARGUMENT', `${name} must be 1–300000`);
   }
   return {
-    params: { service, ...(provider === undefined ? {} : { provider }), ...(input === undefined ? {} : { input }), ...(params === undefined ? {} : { params }), ...(timeoutMs === undefined ? {} : { timeoutMs }) },
+    params: { service, ...(provider === undefined ? {} : { provider }), ...(input === undefined ? {} : { input }), ...(params === undefined ? {} : { params }), ...(timeoutMs === undefined ? {} : { timeoutMs }), ...(interactive === undefined ? {} : { interactive }) },
     promptMs: timeoutMs ?? SERVICE_PROMPT_TIMEOUT_MS,
     execMs: execTimeoutMs ?? SERVICE_EXEC_TIMEOUT_MS,
   };
@@ -653,8 +687,14 @@ function validServiceId(value, what) {
   return value;
 }
 
+// The service error code of a call with interactive: false that would have
+// needed the user's approval or provider choice (host 0.3.0+; older hosts
+// answer invalid_params). Nothing was shown or run.
+export const SERVICE_ERR_INTERACTION_REQUIRED = 'interaction_required';
+
 // The service error code of a failure: the host's data.code ('not_found',
-// 'too_large', 'busy', 'timeout', 'cancelled', ...) or '' when there is none.
+// 'too_large', 'busy', 'timeout', 'cancelled', 'interaction_required', ...)
+// or '' when there is none.
 export function serviceErrorCode(error) {
   const code = error?.data?.code;
   return typeof code === 'string' ? code : '';

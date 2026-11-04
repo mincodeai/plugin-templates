@@ -104,6 +104,19 @@ export declare function createDecorationsAPI(host: HostCall): {
   refresh(): Promise<{ scheduled: boolean }>;
 };
 
+/**
+ * jdtls commands (contributes.jdtlsBundles, capability `shell`, host 0.3.0).
+ * executeCommand sends workspace/executeCommand to the built-in Java language server running
+ * for the absolute project folder `root` and resolves its result (null when none). Only commands
+ * declared in the plugin's own jdtlsBundles are allowed (-32001); a jdtls that is not running or
+ * was started without the plugin's confirmed jars rejects with -32000 "unavailable: ...". The host
+ * waits at most 60 s and refuses results above 1 MiB (-32603). Rejects with code `UNSUPPORTED`
+ * on hosts without the method or when the plugin declares no jdtlsBundles (-32601).
+ */
+export declare function createJdtlsAPI(host: HostCall): {
+  executeCommand(request: { root: string; command: string; arguments?: unknown[] }): Promise<unknown>;
+};
+
 // ---- shell (capability `shell`) ----
 
 export interface ShellResult {
@@ -268,6 +281,12 @@ export interface ServiceCall {
   timeoutMs?: number;
   /** SDK-only: how long invoke waits for the provider's run (default 300000, the longest any entry may run). */
   execTimeoutMs?: number;
+  /**
+   * false: a call that would need the user's approval or provider choice fails with code 'interaction_required'
+   * (SERVICE_ERR_INTERACTION_REQUIRED) instead of asking (host 0.3.0+; older hosts answer invalid_params).
+   * Omitted: true. Any other value throws a PluginError with code INVALID_ARGUMENT.
+   */
+  interactive?: boolean;
 }
 /** output: the text of a text service, the value of a json service, ServiceFile[] of a file service, or null. */
 export interface ServiceResult<T = unknown> { provider: { pluginId: string; entryId: string }; output: T }
@@ -304,7 +323,9 @@ export interface ServicesAPI {
   files: ServiceFilesAPI;
 }
 export declare function createServicesAPI(host: HostCall, options?: { maxChunkBytes?: number; maxFileBytes?: number; pollIntervalsMs?: number[] }): ServicesAPI;
-/** The service error code of a failure ('not_found', 'too_large', 'busy', 'timeout', 'cancelled', ...) or ''. */
+/** The service error code of an interactive: false call that would have asked the user. */
+export declare const SERVICE_ERR_INTERACTION_REQUIRED: 'interaction_required';
+/** The service error code of a failure ('not_found', 'too_large', 'busy', 'timeout', 'cancelled', 'interaction_required', ...) or ''. */
 export declare function serviceErrorCode(error: unknown): string;
 
 /** The payload a provider's action receives. Return { text } | { json } | { files: [token] } | {}. */
