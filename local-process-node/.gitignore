@@ -2,3 +2,5 @@
 node_modules/
 dist-plugin/
 *.log
+lib/runtime.mjs
+lib/runtime.d.mts

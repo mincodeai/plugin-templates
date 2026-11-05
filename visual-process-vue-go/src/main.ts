@@ -1,4 +1,4 @@
-import { mountPlugin } from "@mincode/plugin-ui/mount.js";
+import { mountPlugin } from "@mincodeai/plugin-ui/mount.js";
 import "element-plus/theme-chalk/el-card.css";
 import "element-plus/theme-chalk/el-descriptions.css";
 import "element-plus/theme-chalk/el-descriptions-item.css";

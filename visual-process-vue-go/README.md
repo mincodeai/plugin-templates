@@ -9,17 +9,17 @@ MinCode does not run `pnpm install`, `go mod download`, or `go build` while inst
 ```text
 visual-process-vue-go/
 ├── backend/                       # independent Go module and process runtime
-│   ├── go.mod                     # requires + replaces github.com/mincodeai/plugin-sdk-go
+│   ├── go.mod                     # requires the published github.com/mincodeai/plugin-sdk-go
 │   ├── main.go                    # Options + action handlers (your code)
-│   ├── main_test.go
-│   └── third_party/plugin-sdk-go/ # vendored MinCode Go plugin SDK; do not edit
+│   └── main_test.go
 ├── src/                           # Vue 3 + Element Plus source
 │   ├── App.vue
 │   ├── main.ts
 │   └── transport.ts
 ├── scripts/                       # build, protocol test, and package verification
 ├── plugin.template.json           # source manifest with build placeholders
-├── package.json
+├── package.json                   # depends on the published @mincodeai/plugin-ui
+├── mincode.project.json           # template and MinCode version that created the project
 └── dist-plugin/                   # generated installable package; do not hand-edit
     ├── plugin.json
     ├── bin/
@@ -28,14 +28,16 @@ visual-process-vue-go/
 
 ## Quick start
 
-Copy the template outside the MinCode repository, change its IDs and metadata, then install dependencies:
+Create a project with the `mincode` command-line tool that ships with MinCode, change its metadata, then install dependencies:
 
 ```bash
-cp -R tools/plugin-templates/visual-process-vue-go ~/Developer/my-mincode-plugin
+mincode plugin create ~/Developer/my-mincode-plugin --id my-mincode-plugin --template visual-process-vue-go
 cd ~/Developer/my-mincode-plugin
 pnpm install
 pnpm verify
 ```
+
+The project depends on the published MinCode modules at the versions recommended by the MinCode release that created it (`github.com/mincodeai/plugin-sdk-go` in `backend/go.mod`, `@mincodeai/plugin-ui` in `package.json`), so the first `pnpm install` and the first backend build need network access to the npm registry and the Go module proxy (the first build runs `go mod tidy` once to create `backend/go.sum`; commit it). Later builds use the local caches. Behind a slow or blocked network, set `GOPROXY` (for example `https://goproxy.cn,direct`) and an npm registry mirror.
 
 `pnpm verify` runs Go unit tests, an executable-level JSON-RPC protocol test, Vue type checking, the UI/backend build, and package-limit checks. Install the generated absolute directory from **Plugin Management**:
 
@@ -45,13 +47,13 @@ pnpm verify
 
 Set the required `category` (default `development`) and optional `tags`/`homepage` in `plugin.template.json` according to the [catalog contract](https://www.mincodeai.cn/llms/local-plugin-template.md); the build preserves these fields in `plugin.json`. Only the built `plugin.json` is accepted; there is no legacy fallback or automatic migration. Invalid installed packages retain configuration/KV and show an error without starting.
 
-Review the read-only preflight and explicitly confirm installation. Preflight does not copy, register, enable, execute, or write plugin data; installation revalidates. New local plugins install disabled. Review the capabilities, enable the plugin, and open **Vue + Go Plugin**. The same runtime protocol v1 supports custom third-party implementations, the vendored Go SDK used here, or the optional vendored Node SDK; the installer never injects a runtime.
+Review the read-only preflight and explicitly confirm installation. Preflight does not copy, register, enable, execute, or write plugin data; installation revalidates. New local plugins install disabled. Review the capabilities, enable the plugin, and open **Vue + Go Plugin**. The same runtime protocol v1 supports custom third-party implementations, the Go SDK used here, or the optional Node SDK; the installer never injects a runtime.
 
 ## Page bridge and browser preview
 
-`src/transport.ts` re-exports the shared MinCode plugin page bridge vendored in `src/mincode/` (do not edit; the MinCode repository refreshes it with `pnpm sync:plugin-ui`). Besides `call(action, payload)` it offers long tasks (`tasks.start/get/cancel`), trusted host confirmation (`confirm`), clipboard writes, plugin settings (`configuration.get/open`), bound documents and host theme tokens, all typed by `src/mincode/transport.d.ts`.
+`src/transport.ts` re-exports the shared MinCode plugin page bridge from the `@mincodeai/plugin-ui` package (`@mincodeai/plugin-ui/transport.js`). Besides `call(action, payload)` it offers long tasks (`tasks.start/get/cancel`), trusted host confirmation (`confirm`), clipboard writes, plugin settings (`configuration.get/open`), bound documents and host theme tokens, all typed by the package's `transport.d.ts`.
 
-Do not hand-write polling loops for long actions. `src/transport.ts` also re-exports the task helpers from `src/mincode/tasks.mjs`:
+Do not hand-write polling loops for long actions. `src/transport.ts` also re-exports the task helpers from `@mincodeai/plugin-ui/tasks.mjs`:
 
 ```ts
 import { runAIAction, runTask, runTaskOrCall, type TaskControl } from "./transport";
@@ -88,28 +90,17 @@ o.Handler = func(ctx context.Context, action string, payload json.RawMessage) (a
 rpc.Main(o)
 ```
 
-Return a value for a result, `rpc.NewError(code, message)` for an exact error, or any other error for `-32000`. `host.FromContext(ctx).Call(ctx, "host.storage.get", params)` performs a reverse request; `jsonx.DecodeObject` strictly decodes payloads; `profiles.Store` / `profiles.Secrets` store connection profiles and credentials through the host; `rpctest.NewFakeHost()` is an in-memory host for handler unit tests. The package reference is `backend/third_party/plugin-sdk-go/README.md`.
+Return a value for a result, `rpc.NewError(code, message)` for an exact error, or any other error for `-32000`. `host.FromContext(ctx).Call(ctx, "host.storage.get", params)` performs a reverse request; `jsonx.DecodeObject` strictly decodes payloads; `profiles.Store` / `profiles.Secrets` store connection profiles and credentials through the host; `rpctest.NewFakeHost()` is an in-memory host for handler unit tests. The package reference is the SDK's README (`go doc github.com/mincodeai/plugin-sdk-go/rpc`, or the module page on pkg.go.dev).
 
-The SDK is not published to a Go module proxy, so the template carries a vendored copy and points `go.mod` at it:
+The SDK is a normal published Go module; `backend/go.mod` requires the version recommended by your MinCode release:
 
 ```text
-require github.com/mincodeai/plugin-sdk-go v0.0.0-00010101000000-000000000000
-
-replace github.com/mincodeai/plugin-sdk-go => ./third_party/plugin-sdk-go
+require github.com/mincodeai/plugin-sdk-go vX.Y.Z
 ```
 
-Builds work offline and outside the MinCode repository (`GOWORK=off go build ./...`). Do not edit `third_party/plugin-sdk-go`; its `VERSION` file records a checksum of the copy. To update it, use a newer `mincode` CLI, which replaces the whole directory with its built-in copy (and updates `src/mincode/` in the same run), then re-run the tests:
+Its version follows MinCode releases. To move to a newer SDK, change the version (`cd backend && go get github.com/mincodeai/plugin-sdk-go@vX.Y.Z && go mod tidy`) and re-run `pnpm verify`.
 
-```bash
-cd ~/Developer/my-mincode-plugin
-mincode plugin sync --check   # only check; exits 1 when a copy differs from this CLI
-mincode plugin sync
-cd backend && go test ./...
-```
-
-Without the CLI, run the Node script from a newer MinCode plugin development kit root: `node tools/sync-go-sdk.mjs --source sdk/go /absolute/my-plugin/backend` (add `--check` to only check).
-
-Inside the MinCode repository, `pnpm sync:go-sdk` refreshes this template's copy and CI runs `pnpm verify:go-sdk-vendor`, which fails when the copy drifts from `packages/plugin-sdk-go`.
+Inside the MinCode repository the template's `go.mod` additionally carries a `// mincode:workspace` replace that points at the repository SDK source; `mincode plugin create` removes those two lines from generated projects. Projects created by older MinCode versions carry a vendored copy under `backend/third_party/plugin-sdk-go` instead; `mincode plugin upgrade` migrates such projects to the published module, and `mincode plugin sync` still updates the copies until then.
 
 ## Adding dependencies
 
@@ -151,7 +142,7 @@ Cross-compiling CGO-based modules normally needs a target C toolchain and cannot
 ## Runtime and security contract
 
 - `apiVersion: 2` is the manifest format; `runtimeProtocolVersion` remains `1`.
-- The Go process communicates through newline-delimited UTF-8 JSON-RPC 2.0 (implemented by the vendored Go plugin SDK).
+- The Go process communicates through newline-delimited UTF-8 JSON-RPC 2.0 (implemented by the Go plugin SDK).
 - stdout is protocol-only. Send diagnostics to stderr; never print ad-hoc text to stdout.
 - The host calls `plugin.initialize`, `plugin.invoke`, `plugin.ping`, and `plugin.shutdown`.
 - The Vue UI calls only actions declared with `uiCallable: true`, through the transferred `MessagePort`.
@@ -165,7 +156,7 @@ See `docs/development/plugin-development.md`, `docs/architecture/plugin-system.m
 
 ## Shared plugin UI components
 
-`src/mincode/` contains a pinned, self-contained copy of MinCode's iframe UI library:
+The `@mincodeai/plugin-ui` package contains MinCode's iframe UI library, published as source (`.vue`, `.js`, `.ts` with type declarations) that your Vite build compiles and bundles:
 
 - `mount.js`: mounts the plugin's own Vue app and loads shared foundation, Element Plus control and scrollbar styles. Import any additional Element Plus component styles explicitly (the starter imports card/descriptions styles).
 - `PluginConnectionBar.vue`: status, saved-profile picker, management footer and connection actions.
@@ -173,15 +164,15 @@ See `docs/development/plugin-development.md`, `docs/architecture/plugin-system.m
 - `PluginTaskPanel.vue`, `PluginResults.vue`, `OfficialPluginPage.vue`: task progress, structured results and configurable form-page helpers.
 - `transport.js`, `tasks.mjs`: the same typed bridge/task API re-exported by `src/transport.ts`.
 
-`@mincode/plugin-ui/*` is a **local Vite/TypeScript alias** to `src/mincode/*`, not an npm package and not a runtime import from the desktop application. Vue, Element Plus and the icons are declared dependencies and are bundled into your plugin's `dist-plugin/ui/`. Never import host Pinia, Router, Wails bindings or application instances.
+Import its files by package path, for example `@mincodeai/plugin-ui/mount.js`; this is a build-time dependency, not a runtime import from the desktop application. Vue, Element Plus (its peer dependencies) and the icons are declared dependencies and are bundled into your plugin's `dist-plugin/ui/`. Because the package ships `.vue` sources, `vite.config.ts` excludes it from dependency pre-bundling (`optimizeDeps.exclude`). Never import host Pinia, Router, Wails bindings or application instances.
 
 A connection toolbar needs your plugin's profile data and business handlers; it does not implement a connection backend. This complete example keeps those actions in the parent:
 
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue';
-import PluginConnectionBar from '@mincode/plugin-ui/PluginConnectionBar.vue';
-import type { PluginConnectionLabels } from '@mincode/plugin-ui/PluginConnectionBar.vue';
+import PluginConnectionBar from '@mincodeai/plugin-ui/PluginConnectionBar.vue';
+import type { PluginConnectionLabels } from '@mincodeai/plugin-ui/PluginConnectionBar.vue';
 
 const props = defineProps<{
   labels: PluginConnectionLabels; // supply translated zh/en copy
@@ -232,23 +223,10 @@ Use the notice area without changing error/security conditions:
 </PluginStatusArea>
 ```
 
-Import `PluginStatusArea` from `@mincode/plugin-ui/PluginStatusArea.vue`. Ordinary scroll areas use `ElScrollbar`; use either the shared mount's page scrollbar or your own page scrollbar, not two nested primary scrollbars. The starter owns its page scrollbar and passes `{ pageScrollbar: false }` to `mountPlugin`.
+Import `PluginStatusArea` from `@mincodeai/plugin-ui/PluginStatusArea.vue`. Ordinary scroll areas use `ElScrollbar`; use either the shared mount's page scrollbar or your own page scrollbar, not two nested primary scrollbars. The starter owns its page scrollbar and passes `{ pageScrollbar: false }` to `mountPlugin`.
 
-### Updating the vendored UI
+### Updating the UI library
 
-Do not edit `src/mincode/` by hand. `VERSION` contains file checksums (not the host application version). Update it with a newer `mincode` CLI (the same run also updates `backend/third_party/plugin-sdk-go/`):
+Do not copy or edit the package's files; keep customizations in your own components and styles. To move to a newer version, change `@mincodeai/plugin-ui` in `package.json` (`pnpm add @mincodeai/plugin-ui@X.Y.Z`), re-run `pnpm verify`, then rebuild and reinstall the plugin. Already installed plugins never change just because the library or host was updated.
 
-```sh
-mincode plugin sync --check /absolute/my-plugin
-mincode plugin sync /absolute/my-plugin
-```
-
-`--check` never writes. Updates replace only managed files, remove obsolete unmodified managed files, preserve unknown business files, and refuse locally edited managed files, symlinks and hard links; one locally edited file stops the whole run before anything is written. Back up/move local edits out of the vendor directory before updating; `--force` exists only for old copies without a `VERSION` file (together with `--full` or `--core`). Keep customizations in your own components/styles.
-
-Without the CLI, run the Node script from a newer **exported devkit root** (same rules, `--check` only checks):
-
-```sh
-node tools/sync-plugin-ui.mjs --source sdk/plugin-ui /absolute/my-plugin/src/mincode
-```
-
-Legacy projects with only the five bridge files can update unchanged copies and continue importing `./transport`. Updating the library does **not** rewrite your App, dependencies or configuration. To adopt the new components in an older project, separately add the `@mincode/plugin-ui` Vite/TypeScript alias, `@element-plus/icons-vue`, shared mounting/styles (with explicit extra component CSS), and remove conflicting theme definitions. Re-run `pnpm verify`, then rebuild/reinstall the plugin. Already installed plugins never change just because the source library or host was updated.
+Projects created by older MinCode versions carry a vendored copy in `src/mincode/` behind a local Vite/TypeScript alias instead. `mincode plugin upgrade` migrates them to `@mincodeai/plugin-ui` (removes the copy and the alias and rewrites the imports that pointed into it); `mincode plugin sync --check` / `mincode plugin sync` still update unmigrated copies. Both stop before writing anything when a managed copy file was edited locally.

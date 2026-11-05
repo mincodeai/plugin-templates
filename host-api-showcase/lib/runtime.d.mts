@@ -7,7 +7,20 @@ export type HostCall = (method: string, params?: unknown, options?: { timeoutMs?
 
 export type FileInput = string | Uint8Array | ArrayBuffer;
 
-export type HostEvent = 'workspace.changed' | 'workspace.rootChanged' | 'editor.activeFileChanged' | 'editor.fileSaved' | 'editor.selectionChanged' | 'git.headChanged' | 'ai.activity' | 'ai.tasks';
+export type HostEvent = 'workspace.changed' | 'workspace.rootChanged' | 'editor.activeFileChanged' | 'editor.fileSaved' | 'editor.selectionChanged' | 'git.headChanged' | 'ai.activity' | 'ai.tasks' | 'workspace.fileCreated' | 'workspace.fileDeleted' | 'workspace.fileRenamed' | 'workspace.rescanRequired' | 'git.statusChanged' | 'app.lockChanged' | 'app.suspend' | 'app.resume';
+
+/** Canonical decimal strings are opaque host-owned identities, not JS numbers. */
+export interface SearchFileScope { workspaceId: string; root: string; revision: string }
+export interface ProviderRuntime { instance: string; generation: string }
+export interface SearchProviderPayload { provider: string; query: string; locale: string; project?: { name: string; root: string } }
+/** Provider results contain targets only; never invent fileScope/providerRuntime. Paths are clean root-relative slash paths; line/column are 1-based (column requires line). */
+export type SearchResultArgs = Record<string, string | number | boolean>;
+export type SearchResultTarget = { type: 'view'; view: string; args?: SearchResultArgs } | { type: 'command'; command: string; args?: SearchResultArgs } | { type: 'url'; url: string } | { type: 'file'; path: string; line?: number; column?: number };
+export interface SearchResultItem { id: string; title: string; detail?: string; target: SearchResultTarget }
+/** Host-normalized response. Scope and runtime are present only for file-enabled queries. */
+export interface SearchResponse { items: SearchResultItem[]; dropped: number; truncated: boolean; fileScope?: SearchFileScope; providerRuntime?: ProviderRuntime }
+export interface WorkspaceFileBatch { scopeRevision: string; origin: 'host' | 'watcher'; rescanRequired: boolean }
+export type WorkspaceRescanReason = 'overflow' | 'truncated' | 'sourceLost' | 'deliveryLost';
 
 export type AIActivityPhase = 'queued' | 'thinking' | 'streaming' | 'tool_running' | 'waiting_approval' | 'waiting_input' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
 export declare const HOST_EVENTS: readonly HostEvent[];
@@ -20,6 +33,17 @@ export interface HostEventData {
   'editor.fileSaved': { path: string };
   'editor.selectionChanged': { path: string; selection: { startLine: number; startColumn: number; endLine: number; endColumn: number } };
   'git.headChanged': { branch?: string; detached: boolean; commit?: string };
+  /** workspace.read; availability is described independently from runtime features. */
+  'workspace.fileCreated': WorkspaceFileBatch & { paths: string[] };
+  'workspace.fileDeleted': WorkspaceFileBatch & { paths: string[] };
+  'workspace.fileRenamed': WorkspaceFileBatch & { renames: { oldPath: string; newPath: string }[] };
+  'workspace.rescanRequired': { scopeRevision: string; reason: WorkspaceRescanReason };
+  'git.statusChanged': { scopeRevision: string; staged: number; unstaged: number; untracked: number; conflicted: number };
+  /** A notification only, not authorization or an unlock API. */
+  'app.lockChanged': { locked: boolean };
+  /** Currently unavailable on native platforms; check describe.events, not VERSION. */
+  'app.suspend': Record<string, never>;
+  'app.resume': Record<string, never>;
   /**
    * Capability ai.activity: a snapshot of unfinished AI tasks (a run and its sub-agents count as one), numbered by seq;
    * keep only the highest seq, deliveries may arrive out of order. A phase change also names that run; periodic
@@ -328,13 +352,16 @@ export declare const SERVICE_ERR_INTERACTION_REQUIRED: 'interaction_required';
 /** The service error code of a failure ('not_found', 'too_large', 'busy', 'timeout', 'cancelled', 'interaction_required', ...) or ''. */
 export declare function serviceErrorCode(error: unknown): string;
 
+/** Host-filled metadata after explicit provider opt-in. Not authentication, official identity or authorization. */
+export type ServiceCallerInfo = { kind: 'plugin'; pluginId: string; source?: 'builtin' | 'local' | 'development' | 'unknown'; development?: boolean; /** Omitted above 128 UTF-8 bytes. */ version?: string } | { kind: 'host'; surface: string };
+
 /** The payload a provider's action receives. Return { text } | { json } | { files: [token] } | {}. */
 export interface ServiceRequest {
   callId: string; service: string; entry: string;
   text?: string;
   files?: ServiceFile[];
   params: Record<string, unknown>;
-  caller: { kind: 'plugin'; pluginId: string } | { kind: 'host'; surface: string };
+  caller: ServiceCallerInfo;
   /**
    * Extra context of the newer host surfaces (host 0.3.0: sftpFile, dbResult,
    * httpResponse, terminalSelection), trimmed by the host to the provider's
@@ -363,6 +390,10 @@ export interface StartOptions<H = HostCall> {
    * 4 MiB can be read and written. Hosts without it keep messages within 1 MiB.
    */
   largeStorage?: boolean;
+  /** Default false. Echo searchFileTargets:1 only when offered (workspace.read); otherwise keep strict old search payloads. */
+  searchFileTargets?: boolean;
+  /** Default false. Echo serviceCallerMetadata:1 only when offered; caller metadata is not authentication. */
+  serviceCallerMetadata?: boolean;
   cleanup?: boolean;
   hostTimeoutMs?: number;
   formatResult?: (result: unknown) => unknown;
@@ -371,7 +402,13 @@ export interface StartOptions<H = HostCall> {
   errors?: { timeout?: string; busy?: string };
   validateInitialize?: (params: unknown) => Record<string, unknown> | void;
   onConfigurationChanged?: (keys: string[], context: { host: H }) => unknown;
-  /** Subscribed right after initialize; requires onEvent. */
+  /**
+   * Requires onEvent. After the first initialize reply, describe filters these
+   * requests to entries with available === true; missing entries/available are
+   * unsupported. No implicit additions. An empty intersection sends no subscribe
+   * (use events.subscribe([]) to unsubscribe explicitly). Real discovery/subscribe
+   * failures are logged; initialize acknowledgement does not await subscription.
+   */
   events?: HostEvent[];
   onEvent?: <E extends HostEvent>(event: E, data: HostEventData[E], context: { host: H }) => unknown;
   /**

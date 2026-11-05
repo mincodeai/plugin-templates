@@ -7,9 +7,6 @@
     "strict": true,
     "allowJs": true,
     "checkJs": false,
-    "paths": {
-      "@mincode/plugin-ui/*": ["./src/mincode/*"]
-    },
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,

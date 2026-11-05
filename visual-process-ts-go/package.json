@@ -13,10 +13,13 @@
     "build:backend": "node scripts/build-backend.mjs",
     "build:backend:watch": "node scripts/watch-backend.mjs",
     "build": "node scripts/clean.mjs && pnpm run typecheck && pnpm run build:ui && pnpm run build:backend",
-    "test:backend": "cd backend && go test ./...",
+    "test:backend": "node scripts/ensure-go-sum.mjs && cd backend && go test ./...",
     "test:protocol": "node --test scripts/protocol.test.mjs",
     "test": "pnpm run test:backend && pnpm run test:protocol",
     "verify": "pnpm run test && pnpm run build && node scripts/verify-dist.mjs"
+  },
+  "dependencies": {
+    "@mincodeai/plugin-ui": "0.3.0"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

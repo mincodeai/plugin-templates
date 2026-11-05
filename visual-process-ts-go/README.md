@@ -9,43 +9,46 @@ MinCode does not run `pnpm install`, `go mod download`, or `go build` while inst
 ```text
 visual-process-ts-go/
 ├── backend/                       # independent Go module and process runtime
-│   └── third_party/plugin-sdk-go/ # vendored MinCode Go plugin SDK; do not edit
+│   └── go.mod                     # requires the published github.com/mincodeai/plugin-sdk-go
 ├── src/
 │   ├── main.ts                    # the page (replace with your framework's entry)
 │   ├── styles.css                 # page styles using --app-* theme variables
-│   ├── transport.ts               # re-exports the bridge and task helpers
-│   └── mincode/                   # vendored framework-neutral UI core; do not edit
+│   └── transport.ts               # re-exports the bridge and task helpers
 ├── scripts/                       # build, protocol test, and package verification
 ├── plugin.template.json           # source manifest with build placeholders
+├── package.json                   # depends on the published @mincodeai/plugin-ui
+├── mincode.project.json           # template and MinCode version that created the project
 └── dist-plugin/                   # generated installable package; do not hand-edit
 ```
 
 ## Quick start
 
 ```bash
-cp -R tools/plugin-templates/visual-process-ts-go ~/Developer/my-mincode-plugin
+mincode plugin create ~/Developer/my-mincode-plugin --id my-mincode-plugin --template visual-process-ts-go
 cd ~/Developer/my-mincode-plugin
 pnpm install
 pnpm verify
 ```
 
-Or create it with `mincode plugin create ./my-plugin --template visual-process-ts-go --id example.ui`. `pnpm verify` runs Go unit tests, an executable-level JSON-RPC protocol test, `tsc` type checking, the UI/backend build and package-limit checks. Install the generated absolute `dist-plugin` directory from **Plugin Management**, review the read-only preflight, confirm, and enable it.
+The project depends on the published MinCode modules at the versions recommended by the MinCode release that created it (`github.com/mincodeai/plugin-sdk-go` in `backend/go.mod`, `@mincodeai/plugin-ui` in `package.json`), so the first `pnpm install` and the first backend build need network access to the npm registry and the Go module proxy (the first build runs `go mod tidy` once to create `backend/go.sum`; commit it). Set `GOPROXY` (for example `https://goproxy.cn,direct`) and an npm registry mirror on slow networks. To move to newer versions, change them in `backend/go.mod` (`go get github.com/mincodeai/plugin-sdk-go@vX.Y.Z`) and `package.json`, then re-run `pnpm verify`.
+
+`pnpm verify` runs Go unit tests, an executable-level JSON-RPC protocol test, `tsc` type checking, the UI/backend build and package-limit checks. Install the generated absolute `dist-plugin` directory from **Plugin Management**, review the read-only preflight, confirm, and enable it.
 
 To iterate on the page without the desktop app, run the mock host from the MinCode plugin development kit against the absolute path of the built package: `node tools/mock-host.mjs /absolute/my-plugin/dist-plugin` from the kit root (in the MinCode repository the script is `tools/plugin-devkit/mock-host.mjs`). It uses the same sandbox and handshake and lets you switch theme and locale. Finish with a desktop smoke test.
 
 ## The framework-neutral UI core
 
-`src/mincode/` is the **core** distribution of the shared MinCode plugin UI (the Vue template carries the full one):
+The page imports the **core** entry points of the `@mincodeai/plugin-ui` package (`@mincodeai/plugin-ui/core/*`, no Vue or Element Plus; the Vue template uses the full ones):
 
 - `transport.js` / `transport.d.ts`: the only bridge to the host — `call`, long `tasks`, trusted `confirm`, `clipboard`, `configuration`, bound `document`, `pickPath`, visibility and more.
 - `tasks.mjs`: `runTask`, `runTaskOrCall`, `runAIAction` polling helpers.
 - `theme.css`: the host's `--app-*` semantic variables for every built-in light and dark theme, generated from the host foundation stylesheet, plus thin scrollbars. Set `data-theme` from `applyContext`; contributed theme tokens are applied by the transport automatically.
 
-Update it, together with the vendored Go SDK, with a newer `mincode` CLI: `mincode plugin sync` in the project root (`mincode plugin sync --check` only checks). The CLI reads `src/mincode/VERSION` to tell the core copy from the full one and never mixes them. Local edits are refused and nothing is written. Without the CLI, run `node tools/sync-plugin-ui.mjs --core --source sdk/plugin-ui-core /absolute/my-plugin/src/mincode` from a newer devkit root.
+Do not copy or edit the package's files. Projects created by older MinCode versions carry vendored copies in `src/mincode/` and `backend/third_party/plugin-sdk-go/` instead; `mincode plugin upgrade` migrates them to the published modules (removing the copies and aliases, rewriting only the imports that pointed into the copy), and `mincode plugin sync` (`--check` only checks) still updates the copies for projects that are not migrated yet. Both refuse locally edited copy files.
 
 ## Using another framework
 
-Keep `src/mincode/`, `src/transport.ts` and the `./mincode/theme.css` import. Add the framework and its Vite plugin as dependencies, register the plugin in `vite.config.ts`, and replace `src/main.ts` with your app entry. For React, for example, add `react`, `react-dom` and `@vitejs/plugin-react`, then mount your root component into `#app` and create the transport once.
+Keep the `@mincodeai/plugin-ui` dependency, `src/transport.ts` and the `@mincodeai/plugin-ui/core/theme.css` import. Add the framework and its Vite plugin as dependencies, register the plugin in `vite.config.ts`, and replace `src/main.ts` with your app entry. For React, for example, add `react`, `react-dom` and `@vitejs/plugin-react`, then mount your root component into `#app` and create the transport once.
 
 ## Rules that still apply
 

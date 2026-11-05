@@ -28,8 +28,8 @@ Create a project with `mincode plugin create <dir> --id <plugin-id> --template <
 - 本地进程插件模板说明 / Local process templates: https://www.mincodeai.cn/llms/local-plugin-template.md
 - 给 AI 助手的文档索引 / Docs for AI assistants: https://www.mincodeai.cn/llms.txt
 
-Go 模板在 `backend/third_party/plugin-sdk-go` 中附带了 Go SDK 副本，可以独立构建。模板由 MinCode 主仓库生成，请勿直接在本仓库修改。
-The Go templates vendor the Go SDK under `backend/third_party/plugin-sdk-go` and build standalone. This repository is generated from the MinCode repository; please do not edit it directly.
+模板依赖已发布的 `github.com/mincodeai/plugin-sdk-go` 与 `@mincodeai/plugin-ui`（Node 模板为 `@mincodeai/plugin-sdk`），版本与 MinCode 同步，首次安装依赖与构建需要联网。模板由 MinCode 主仓库生成，请勿直接在本仓库修改。
+The templates depend on the published `github.com/mincodeai/plugin-sdk-go` and `@mincodeai/plugin-ui` (`@mincodeai/plugin-sdk` for the Node template), versioned with MinCode; the first dependency install and build need network access. This repository is generated from the MinCode repository; please do not edit it directly.
 
 ## License
 

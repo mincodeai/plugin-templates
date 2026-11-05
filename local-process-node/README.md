@@ -1,17 +1,20 @@
 # MinCode local process plugin template (Node.js)
 
-This dependency-free template implements a MinCode local-process command plugin (manifest API v2).
-It is intended for **macOS and Linux** hosts with Node.js 18 or newer. It uses a
-single executable `bin/plugin.mjs` entrypoint and a bundled `lib/runtime.mjs`, so no
-`npm install` is required.
+This template implements a MinCode local-process command plugin (manifest API v2).
+It is intended for **macOS and Linux** hosts with Node.js 20 or newer. It uses a
+single executable `bin/plugin.mjs` entrypoint and `lib/runtime.mjs`, which
+`npm run build` copies from the published `@mincodeai/plugin-sdk` package.
 
 ## Quick start
 
-1. Copy this directory outside the MinCode repository and rename it, for example:
+1. Create a project with the `mincode` command-line tool that ships with MinCode, install
+   the SDK and copy its runtime into `lib/` (the first install needs access to the npm registry):
 
    ```bash
-   cp -R tools/plugin-templates/local-process-node ~/Developer/my-mincode-plugin
+   mincode plugin create ~/Developer/my-mincode-plugin --id my-mincode-plugin --template local-process-node
    cd ~/Developer/my-mincode-plugin
+   npm install
+   npm run build
    ```
 
 2. Edit `plugin.json` before installing:
@@ -37,15 +40,18 @@ single executable `bin/plugin.mjs` entrypoint and a bundled `lib/runtime.mjs`, s
 ## Verification in the MinCode repository
 
 Run `node --test tools/verify/node-plugin-templates.test.mjs` from the repository root.
-The tests copy both Node templates to temporary directories and verify their executable
-entries, lifecycle, host storage callbacks, errors, and shutdown cleanup.
+The tests copy the Node templates to temporary directories (with the repository runtime in
+`lib/`) and verify their executable entries, lifecycle, host storage callbacks, errors, and
+shutdown cleanup.
 
-## Bundled runtime SDK
+## Runtime SDK
 
-Copy the entire template, including `lib/runtime.mjs`. The entrypoint imports this
-package-local copy of the shared `packages/plugin-sdk/node/runtime.mjs` SDK, so the
-copied or installed plugin runs independently of the MinCode source checkout and
-working directory. `bin/plugin.mjs` contains only business actions and `start`
+`package.json` depends on `@mincodeai/plugin-sdk` at the version recommended by the MinCode
+release that created the project. `npm run build` (`scripts/copy-runtime.mjs`) copies its
+`runtime.mjs` and `runtime.d.mts` into `lib/`; the entrypoint imports this package-local
+copy, so the installed plugin directory runs on its own (MinCode never runs `npm install`
+while installing). The copies are build output and listed in `.gitignore`; re-run
+`npm run build` after changing the SDK version. `bin/plugin.mjs` contains only business actions and `start`
 configuration; the SDK handles JSON-RPC, host callbacks, timeouts, and cleanup.
 
 The SDK is optional, not a required host dependency. You may replace the bundled
@@ -63,6 +69,6 @@ contract. Keep stdout protocol-only and retain payload validation and cleanup.
 - The plugin process boundary is not an OS sandbox. Request only the capabilities you need and
   treat `shell`, `network`, workspace access, and secrets as high-risk declarations.
 
-See `docs/architecture/plugin-system.md`（MinCode 仓库 `docs/architecture/plugin-system.md`） in the
+See `docs/architecture/plugin-system.md` in the
 MinCode repository for the complete manifest schema, capability model, packaging restrictions,
 and JSON-RPC contract.

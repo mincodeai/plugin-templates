@@ -1,4 +1,4 @@
-/* Theme variables (--app-*) and thin scrollbars come from ./mincode/theme.css,
+/* Theme variables (--app-*) and thin scrollbars come from @mincodeai/plugin-ui/core/theme.css,
    which follows the host theme through data-theme and contributed tokens. */
 html, body, #app { margin: 0; min-width: 0; height: 100%; }
 * { box-sizing: border-box; }

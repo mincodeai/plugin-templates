@@ -22,9 +22,13 @@ export default defineConfig({
     },
     hmr: { path: "hmr" },
   } : undefined,
+  // @mincodeai/plugin-ui ships .vue sources that the dev server's dependency
+  // pre-bundling (esbuild) cannot load; Vite compiles them like project files.
+  optimizeDeps: {
+    exclude: ["@mincodeai/plugin-ui"],
+  },
   resolve: {
     alias: {
-      "@mincode/plugin-ui": fileURLToPath(new URL("./src/mincode", import.meta.url)),
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },

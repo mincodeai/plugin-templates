@@ -22,7 +22,6 @@ export default defineConfig({
   } : undefined,
   resolve: {
     alias: {
-      "@mincode/plugin-ui": fileURLToPath(new URL("./src/mincode", import.meta.url)),
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },

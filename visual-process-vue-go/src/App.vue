@@ -13,7 +13,7 @@ import {
   ElScrollbar,
   ElTag,
 } from "element-plus";
-import PluginStatusArea from "@mincode/plugin-ui/PluginStatusArea.vue";
+import PluginStatusArea from "@mincodeai/plugin-ui/PluginStatusArea.vue";
 import { computed, onBeforeUnmount, ref } from "vue";
 import enLocale from "element-plus/es/locale/lang/en";
 import zhLocale from "element-plus/es/locale/lang/zh-cn";

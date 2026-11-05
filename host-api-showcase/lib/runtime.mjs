@@ -22,7 +22,7 @@ const WORKSPACE_WRITE_MAX_BYTES = 512 * 1024;
 const DEFAULT_WORKSPACE_FILE_BYTES = 16 * 1024 * 1024;
 const WORKSPACE_PATH_BYTES = 4096;
 const LOG_LEVELS = new Set(['debug', 'info', 'warn', 'error']);
-export const HOST_EVENTS = Object.freeze(['workspace.changed', 'workspace.rootChanged', 'editor.activeFileChanged', 'editor.fileSaved', 'editor.selectionChanged', 'git.headChanged', 'ai.activity', 'ai.tasks']);
+export const HOST_EVENTS = Object.freeze(['workspace.changed', 'workspace.rootChanged', 'editor.activeFileChanged', 'editor.fileSaved', 'editor.selectionChanged', 'git.headChanged', 'ai.activity', 'ai.tasks', 'workspace.fileCreated', 'workspace.fileDeleted', 'workspace.fileRenamed', 'workspace.rescanRequired', 'git.statusChanged', 'app.lockChanged', 'app.suspend', 'app.resume']);
 
 export class PluginError extends Error {
   constructor(code, message, { data, retryable = false, cause } = {}) {
@@ -932,9 +932,10 @@ export function start(createActions, {
   // features.configuration = 1; the host waits at most 3 seconds for the ack.
   onConfigurationChanged,
   // Host events: called with (event, data, { host }) for each plugin.event after
-  // the host got its ack. `events` (a subset of HOST_EVENTS) is subscribed right
-  // after initialize; events carrying paths need the workspace.read capability.
-  // Events reach only a running plugin and never start one.
+  // the host got its ack. After the first initialize, describe filters `events`
+  // to explicitly available requested entries; [] or an empty intersection is
+  // a no-op, not an unsubscribe. Direct events.subscribe([]) still unsubscribes.
+  // Events carrying paths need workspace.read; delivery never starts a plugin.
   onEvent,
   events,
   // Global shortcuts: called with (id, token, { host }) after one of the plugin's
@@ -988,6 +989,9 @@ export function start(createActions, {
   // LARGE_STORAGE_MESSAGE_BYTES). Hosts without it keep every message within
   // 1 MiB. createStorageAPI still applies its own maxValueBytes.
   largeStorage = false,
+  // Explicit opt-ins: strict older provider payloads must stay unchanged.
+  searchFileTargets = false,
+  serviceCallerMetadata = false,
 } = {}) {
   if (transport !== 'jsonl' && transport !== 'framed') throw new TypeError("transport must be 'jsonl' or 'framed'");
   if (onBinary !== undefined && typeof onBinary !== 'function') throw new TypeError('onBinary must be a function');
@@ -1172,16 +1176,28 @@ export function start(createActions, {
       if (request.method === 'plugin.initialize') {
         // Validation is synchronous so a following invoke cannot race initialization.
         const extra = validateInitialize?.(request.params);
+        const firstInitialize = !eventsReady;
         initialized = true;
         tasksNegotiated = request.params?.features?.tasks === 1;
         taskEventsNegotiated = tasksNegotiated && taskEvents && request.params?.features?.taskEvents === 1;
         configurationNegotiated = Boolean(onConfigurationChanged) && request.params?.features?.configuration === 1;
         largeStorageNegotiated = largeStorage && request.params?.features?.largeStorage === 1;
         eventsReady = true;
-        const features = { ...(tasksNegotiated ? { tasks: 1 } : {}), ...(taskEventsNegotiated ? { taskEvents: 1 } : {}), ...(configurationNegotiated ? { configuration: 1 } : {}), ...(largeStorageNegotiated ? { largeStorage: 1 } : {}) };
+        const features = { ...(tasksNegotiated ? { tasks: 1 } : {}), ...(taskEventsNegotiated ? { taskEvents: 1 } : {}), ...(configurationNegotiated ? { configuration: 1 } : {}), ...(largeStorageNegotiated ? { largeStorage: 1 } : {}), ...(searchFileTargets === true && request.params?.features?.searchFileTargets === 1 ? { searchFileTargets: 1 } : {}), ...(serviceCallerMetadata === true && request.params?.features?.serviceCallerMetadata === 1 ? { serviceCallerMetadata: 1 } : {}) };
         send({ id: request.id, result: { ...extra, runtimeProtocolVersion: 1, ...(Object.keys(features).length ? { features } : {}), ...(plugin ? { plugin: { id: plugin.id, ...(plugin.version ? { version: plugin.version } : {}) } } : {}) } });
-        if (subscribedEvents.length) {
-          host('host.events.subscribe', { events: subscribedEvents })
+        if (firstInitialize && subscribedEvents.length) {
+          host('host.api.describe', {})
+            .then(description => {
+              if (!description || typeof description !== 'object' || Array.isArray(description)
+                || (description.events != null && !Array.isArray(description.events))) {
+                throw new TypeError('Invalid host event description');
+              }
+              const available = new Set((description.events ?? [])
+                .filter(entry => entry?.available === true).map(entry => entry.name));
+              const selected = subscribedEvents.filter(event => available.has(event));
+              // An empty intersection means unsupported, not an explicit unsubscribe.
+              if (selected.length) return host('host.events.subscribe', { events: selected });
+            })
             .catch(() => { process.stderr.write('Plugin event subscription failed\n'); });
         }
         return;

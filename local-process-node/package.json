@@ -1,0 +1,13 @@
+{
+  "name": "@example/mincode-local-node-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/copy-runtime.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@mincodeai/plugin-sdk": "0.3.0"
+  }
+}

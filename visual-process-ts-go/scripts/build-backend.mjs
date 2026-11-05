@@ -2,6 +2,7 @@ import { chmod, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { ensureGoSum } from "./ensure-go-sum.mjs";
 
 const supportedPlatforms = new Set(["darwin", "linux", "windows"]);
 const hostPlatform = process.platform === "win32" ? "windows" : process.platform;
@@ -17,6 +18,7 @@ const backendRoot = new URL("../backend/", import.meta.url);
 const outputDirectory = new URL("../dist-plugin/bin/", import.meta.url);
 const output = new URL(`../dist-plugin/bin/${binary}`, import.meta.url);
 await mkdir(outputDirectory, { recursive: true });
+ensureGoSum();
 
 execFileSync("go", ["build", "-trimpath", "-ldflags=-s -w", "-o", fileURLToPath(output), "."], {
   cwd: backendRoot,

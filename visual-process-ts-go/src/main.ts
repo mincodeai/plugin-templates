@@ -1,7 +1,7 @@
 // A framework-neutral plugin page: plain TypeScript and DOM APIs, no UI
 // library. Swap this file for React, Svelte, Solid or anything that builds
 // to static assets; keep talking to MinCode only through ./transport.
-import "./mincode/theme.css";
+import "@mincodeai/plugin-ui/core/theme.css";
 import "./styles.css";
 import { createTransport, type HostContext } from "./transport";
 

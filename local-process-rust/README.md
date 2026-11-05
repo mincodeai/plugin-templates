@@ -26,12 +26,35 @@ compile time and never copies the identity sent by the host. Source code and
 `target/` are not part of the installable package. Building is explicit and
 happens on the developer's computer, never during plugin installation.
 
-The starter packages the current OS/CPU only. Windows gets `.exe`; macOS and
-Linux get the native executable. Build separately on each target OS/CPU; do not
-rename a binary to claim another platform. `CARGO_BUILD_TARGET` is rejected by
-this simple build helper, not a universal cross-compiler. If you later add
-cross-compilation, signing or runtime libraries, test the complete target
-package. Keep `Cargo.lock` committed and review crate dependencies.
+`cargo xtask build` packages the current OS/CPU by default. Windows gets
+`.exe`; macOS and Linux get the native executable.
+
+## Release for the plugin market
+
+```sh
+mincode plugin release                                # all four market platforms
+mincode plugin release --targets darwin/arm64         # only this platform
+```
+
+`release` runs `cargo xtask build` once per platform (darwin/arm64,
+darwin/amd64, windows/amd64, linux/amd64) with `MINCODE_TARGET_OS` and
+`MINCODE_TARGET_ARCH` set, packs each `dist-plugin/` into
+`dist-release/<id>-<version>/<id>-<version>-<os>-<arch>.min` and writes
+`SHA256SUMS` and `release.json`. For a platform other than the host, xtask runs
+`cargo build --target <triple>` (`aarch64-apple-darwin`, `x86_64-apple-darwin`,
+`x86_64-pc-windows-gnu`, `x86_64-unknown-linux-gnu`) and takes the executable
+from `target/<triple>/release/`. Cross builds need a rustup-managed
+toolchain: install each missing target with `rustup target add <triple>`;
+cross-linking also needs a linker for that target
+(for example MinGW-w64 for Windows, configured in `.cargo/config.toml`). If a
+target is missing, `release` stops before building and names the command; use
+`--targets` with your own platform to package just that one. Do not set
+`CARGO_BUILD_TARGET` yourself: it would also cross-compile the xtask helper,
+so `release` refuses to start while it is set. After a release, `dist-plugin/`
+holds the last platform's build; run `mincode plugin build` again before
+`dev`, `pack` or installing on this computer.
+If you add signing or runtime libraries, test the complete package on each
+target. Keep `Cargo.lock` committed and review crate dependencies.
 
 ## Protocol boundary
 
