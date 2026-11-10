@@ -498,6 +498,10 @@ export function createAIAPI(host) {
       if (!request || typeof request !== 'object' || typeof request.conversationKey !== 'string' || typeof request.prompt !== 'string' || !Array.isArray(request.allowedPlugins)) {
         throw pluginError('INVALID_ARGUMENT', 'AI turn needs conversationKey, prompt and allowedPlugins');
       }
+      // history: 'none' sends the model only the system prompt, instructions and this prompt.
+      if (request.history !== undefined && request.history !== '' && request.history !== 'none') {
+        throw pluginError('INVALID_ARGUMENT', 'AI turn history must be "none" or omitted');
+      }
       return host('host.ai.turn.start', request);
     },
     poll: turnId => host('host.ai.turn.poll', { id: id(turnId) }),

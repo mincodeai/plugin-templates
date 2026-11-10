@@ -184,6 +184,14 @@ export interface AITurnRequest {
   maxRisk?: string;
   chatApproval?: boolean;
   workspaceAccess?: boolean;
+  /**
+   * `'none'`: the model sees only the system prompt, `instructions` and this `prompt`
+   * (tool calls of the same turn still see each other); the turn is still recorded in
+   * the conversation. Omitted: earlier messages of the conversation are replayed.
+   * Hosts released before this field ignore it and replay the history: check
+   * `(await createHostAPI(host).describe()).features.aiTurnHistory === 1` first.
+   */
+  history?: 'none';
 }
 export interface AITurnState {
   id: string;
