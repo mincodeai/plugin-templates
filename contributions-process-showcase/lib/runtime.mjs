@@ -22,7 +22,7 @@ const WORKSPACE_WRITE_MAX_BYTES = 512 * 1024;
 const DEFAULT_WORKSPACE_FILE_BYTES = 16 * 1024 * 1024;
 const WORKSPACE_PATH_BYTES = 4096;
 const LOG_LEVELS = new Set(['debug', 'info', 'warn', 'error']);
-export const HOST_EVENTS = Object.freeze(['workspace.changed', 'workspace.rootChanged', 'editor.activeFileChanged', 'editor.fileSaved', 'editor.selectionChanged', 'git.headChanged', 'ai.activity', 'ai.tasks', 'workspace.fileCreated', 'workspace.fileDeleted', 'workspace.fileRenamed', 'workspace.rescanRequired', 'git.statusChanged', 'app.lockChanged', 'app.suspend', 'app.resume']);
+export const HOST_EVENTS = Object.freeze(['workspace.changed', 'workspace.rootChanged', 'editor.activeFileChanged', 'editor.fileSaved', 'editor.selectionChanged', 'git.headChanged', 'ai.activity', 'ai.tasks', 'workspace.fileCreated', 'workspace.fileDeleted', 'workspace.fileRenamed', 'workspace.rescanRequired', 'git.statusChanged', 'app.lockChanged', 'app.suspend', 'app.resume', 'tests.runEnded']);
 
 export class PluginError extends Error {
   constructor(code, message, { data, retryable = false, cause } = {}) {
@@ -371,6 +371,41 @@ export function createJdtlsAPI(host) {
         throw error;
       }
       return result ?? null;
+    },
+  };
+}
+
+// Streaming test runs (contributes.testProviders debugRun, capability
+// `workspace.read`, host 0.3.0). The host calls the provider's
+// resolveRunAction with {provider, project: {root}, testIds, debug, runId};
+// publish(runId, events) then reports generic result events of that live run:
+// tree {id, parentId?, label, kind: 'suite'|'test', path?, line?}, started
+// {id}, passed|failed|errored|skipped {id, durationMs?, message?, expected?,
+// actual?, trace?}, output {id?, text} and finished {durationMs?}. At most 500
+// events and 256 KiB per call and 200 calls per second (-32029); a run that is
+// unknown, another plugin's or ended answers -32001. The run's plugin receives
+// the host event 'tests.runEnded' {runId, reason} when its debug session ends
+// (subscribed or not); late events are accepted for 10 s after it. Hosts
+// without the method (or a plugin without debugRun) answer -32601, which
+// rejects with code UNSUPPORTED. Resolves {accepted, dropped}.
+export const TEST_PUBLISH_EVENTS_MAX = 500;
+
+export function createTestsAPI(host) {
+  return {
+    async publish(runId, events) {
+      if (typeof runId !== 'string' || !runId) throw pluginError('INVALID_ARGUMENT', 'test events require a run id');
+      if (!Array.isArray(events)) throw pluginError('INVALID_ARGUMENT', 'test events must be an array');
+      if (events.length > TEST_PUBLISH_EVENTS_MAX) throw pluginError('INVALID_ARGUMENT', `at most ${TEST_PUBLISH_EVENTS_MAX} test events per call`);
+      let result;
+      try { result = await host('host.tests.publish', { runId, events }); }
+      catch (error) {
+        if (error?.code === -32601) throw pluginError('UNSUPPORTED', 'This MinCode host does not support streaming test runs', { cause: error });
+        throw error;
+      }
+      if (!result || typeof result !== 'object' || !Number.isInteger(result.accepted) || !Number.isInteger(result.dropped)) {
+        throw pluginError('INVALID_HOST_RESULT', 'Host returned an invalid test publish result');
+      }
+      return { accepted: result.accepted, dropped: result.dropped };
     },
   };
 }

@@ -7,7 +7,7 @@ export type HostCall = (method: string, params?: unknown, options?: { timeoutMs?
 
 export type FileInput = string | Uint8Array | ArrayBuffer;
 
-export type HostEvent = 'workspace.changed' | 'workspace.rootChanged' | 'editor.activeFileChanged' | 'editor.fileSaved' | 'editor.selectionChanged' | 'git.headChanged' | 'ai.activity' | 'ai.tasks' | 'workspace.fileCreated' | 'workspace.fileDeleted' | 'workspace.fileRenamed' | 'workspace.rescanRequired' | 'git.statusChanged' | 'app.lockChanged' | 'app.suspend' | 'app.resume';
+export type HostEvent = 'workspace.changed' | 'workspace.rootChanged' | 'editor.activeFileChanged' | 'editor.fileSaved' | 'editor.selectionChanged' | 'git.headChanged' | 'ai.activity' | 'ai.tasks' | 'workspace.fileCreated' | 'workspace.fileDeleted' | 'workspace.fileRenamed' | 'workspace.rescanRequired' | 'git.statusChanged' | 'app.lockChanged' | 'app.suspend' | 'app.resume' | 'tests.runEnded';
 
 /** Canonical decimal strings are opaque host-owned identities, not JS numbers. */
 export interface SearchFileScope { workspaceId: string; root: string; revision: string }
@@ -56,6 +56,11 @@ export interface HostEventData {
    * Sent shortly after any change and every minute while tasks are listed. No conversation content or identifiers.
    */
   'ai.tasks': { seq: number; tasks: { runId: string; source: 'assistant' | 'agent'; phase: AIActivityPhase; title: string; summary?: string; updatedAt: number }[] };
+  /**
+   * workspace.read, host 0.3.0: the debug session of the plugin's streaming test run ended (see createTestsAPI).
+   * Sent to the run's plugin only, whether or not it subscribed; stop listening and clean up.
+   */
+  'tests.runEnded': { runId: string; reason: string };
 }
 
 export declare class PluginError extends Error {
@@ -139,6 +144,29 @@ export declare function createDecorationsAPI(host: HostCall): {
  */
 export declare function createJdtlsAPI(host: HostCall): {
   executeCommand(request: { root: string; command: string; arguments?: unknown[] }): Promise<unknown>;
+};
+
+/** One generic test run event (see createTestsAPI). */
+export type TestRunEvent =
+  | { type: 'tree'; id: string; parentId?: string; label: string; kind: 'suite' | 'test'; path?: string; line?: number }
+  | { type: 'started'; id: string }
+  | { type: 'passed' | 'failed' | 'errored' | 'skipped'; id: string; durationMs?: number; message?: string; expected?: string; actual?: string; trace?: string }
+  | { type: 'output'; id?: string; text: string }
+  | { type: 'finished'; durationMs?: number };
+
+export declare const TEST_PUBLISH_EVENTS_MAX: number;
+
+/**
+ * Streaming test runs (contributes.testProviders debugRun, capability `workspace.read`, host 0.3.0).
+ * The host calls the provider's resolveRunAction with {provider, project: {root}, testIds, debug, runId};
+ * publish reports result events of that live run (<= 500 events, 256 KiB per call, 200 calls/s, -32029 above;
+ * an unknown, foreign or ended run rejects with -32001). Invalid events are dropped and counted. Message
+ * <= 4096 characters; trace, expected, actual and output text <= 64 KiB; <= 10000 test ids per run. The
+ * host event 'tests.runEnded' tells the plugin its session ended. Rejects with code `UNSUPPORTED` on hosts
+ * without the method or when the plugin declares no debugRun (-32601).
+ */
+export declare function createTestsAPI(host: HostCall): {
+  publish(runId: string, events: TestRunEvent[]): Promise<{ accepted: number; dropped: number }>;
 };
 
 // ---- shell (capability `shell`) ----
