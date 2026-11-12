@@ -19,7 +19,7 @@
     "verify": "pnpm run test && pnpm run build && node scripts/verify-dist.mjs"
   },
   "dependencies": {
-    "@mincodeai/plugin-ui": "0.3.0"
+    "@mincodeai/plugin-ui": "0.3.1"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

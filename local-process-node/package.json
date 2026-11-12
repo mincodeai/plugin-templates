@@ -8,6 +8,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@mincodeai/plugin-sdk": "0.3.0"
+    "@mincodeai/plugin-sdk": "0.3.1"
   }
 }
